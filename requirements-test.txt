@@ -1,0 +1,2 @@
+pysen[lint]
+pytest
