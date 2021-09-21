@@ -67,7 +67,7 @@ def main(speaker_id):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     t4 = IntervalTimer()
-    for aq_path in input_dir.glob("*.json"):
+    for aq_path in input_dir.glob("*_s{:02d}.json".format(speaker_id)):
         response = client.post(
             "/synthesis",
             json=json.loads(aq_path.read_text(encoding="utf-8")),
@@ -78,7 +78,7 @@ def main(speaker_id):
     print("{:.3f} [sec]".format(t4.elapsed()))
 
     input_dir = Path("a/synthesis")
-    for wave_path in input_dir.glob("*.wav"):
+    for wave_path in input_dir.glob("*_s{:02d}.wav".format(speaker_id)):
         wave_obj = simpleaudio.WaveObject.from_wave_file(wave_path.as_posix())
         play_obj = wave_obj.play()
         play_obj.wait_done()
