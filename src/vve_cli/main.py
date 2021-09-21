@@ -1,5 +1,7 @@
 import argparse
+import inspect
 import json
+import pprint
 import time
 from pathlib import Path
 
@@ -30,20 +32,40 @@ class VveClient:
         )
 
 
+class VveServer:
+    def __init__(self, client: VveClient) -> None:
+        self.__client = client
+        version = self.version()
+        print("{:>18}:  {}".format("ENGINE version", version))
+
+    def version(self):
+        t = IntervalTimer()
+        response = self.__client.get("/version")
+        response_time = t.elapsed()
+        print(
+            "{:>18}:  {:.3f} [sec]".format(
+                inspect.currentframe().f_code.co_name, response_time
+            )
+        )
+        return response.json().strip()
+
+    def speakers(self):
+        t = IntervalTimer()
+        response = self.__client.get("/speakers")
+        response_time = t.elapsed()
+        print(
+            "{:>18}:  {:.3f} [sec]".format(
+                inspect.currentframe().f_code.co_name, response_time
+            )
+        )
+        return response.json()
+
+
 def main(speaker_id):
     client = VveClient()
 
-    t1 = IntervalTimer()
-    response = client.get("/version")
-    print(response.status_code)
-    print(response.json().strip())
-    print("{:.3f} [sec]".format(t1.elapsed()))
-
-    t2 = IntervalTimer()
-    response = client.get("/speakers")
-    print(response.status_code)
-    print(response.json())
-    print("{:.3f} [sec]".format(t2.elapsed()))
+    server = VveServer(client)
+    pprint.pprint(server.speakers())
 
     with open("q/speech.txt", encoding="utf-8") as f:
         texts = [line.strip() for line in f.readlines()]
