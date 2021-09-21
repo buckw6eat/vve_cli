@@ -3,6 +3,7 @@ import time
 from pathlib import Path
 
 import requests
+import simpleaudio
 
 
 class IntervalTimer:
@@ -67,12 +68,18 @@ def run():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     t4 = IntervalTimer()
-    for aq in input_dir.glob("*.json"):
+    for aq_path in input_dir.glob("*.json"):
         response = client.post(
             "/synthesis",
-            json=json.loads(aq.read_text(encoding="utf-8")),
+            json=json.loads(aq_path.read_text(encoding="utf-8")),
             params={"speaker": speaker_id},
             headers={"Content-Type": "application/json"},
         )
-        (output_dir / (aq.stem + ".wav")).write_bytes(response.content)
+        (output_dir / (aq_path.stem + ".wav")).write_bytes(response.content)
     print("{:.3f} [sec]".format(t4.elapsed()))
+
+    input_dir = Path("a/synthesis")
+    for wave_path in input_dir.glob("*.wav"):
+        wave_obj = simpleaudio.WaveObject.from_wave_file(wave_path.as_posix())
+        play_obj = wave_obj.play()
+        play_obj.wait_done()
