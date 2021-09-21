@@ -1,3 +1,4 @@
+import argparse
 import json
 import time
 from pathlib import Path
@@ -29,7 +30,7 @@ class VveClient:
         )
 
 
-def run():
+def main(speaker_id):
     client = VveClient()
 
     t1 = IntervalTimer()
@@ -43,8 +44,6 @@ def run():
     print(response.status_code)
     print(response.json())
     print("{:.3f} [sec]".format(t2.elapsed()))
-
-    speaker_id = 0
 
     with open("q/speech.txt", encoding="utf-8") as f:
         texts = [line.strip() for line in f.readlines()]
@@ -83,3 +82,13 @@ def run():
         wave_obj = simpleaudio.WaveObject.from_wave_file(wave_path.as_posix())
         play_obj = wave_obj.play()
         play_obj.wait_done()
+
+
+def run():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--speaker_id", type=int, default=0)
+
+    args = parser.parse_args()
+
+    main(args.speaker_id)
