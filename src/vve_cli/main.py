@@ -1,4 +1,6 @@
+import json
 import time
+from pathlib import Path
 
 import requests
 
@@ -20,6 +22,9 @@ class VveClient:
     def get(self, url):
         return requests.get(self.__urlorigin + url)
 
+    def post(self, url, params=None):
+        return requests.post(self.__urlorigin + url, params=params)
+
 
 def run():
     client = VveClient()
@@ -35,3 +40,20 @@ def run():
     print(response.status_code)
     print(response.json())
     print("{:.3f} [sec]".format(t2.elapsed()))
+
+    with open("q/speech.txt", encoding="utf-8") as f:
+        texts = [line.strip() for line in f.readlines()]
+
+    output_dir = Path("a/audio_query")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    speaker_id = 0
+    t3 = IntervalTimer()
+    for i, text in enumerate(texts):
+        response = client.post(
+            "/audio_query", params={"text": text, "speaker": speaker_id}
+        )
+        (output_dir / "text-{:03d}_s{:02d}.json".format(i + 1, speaker_id)).write_text(
+            json.dumps(response.json(), ensure_ascii=False), encoding="utf-8"
+        )
+    print("{:.3f} [sec]".format(t3.elapsed()))
