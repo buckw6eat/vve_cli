@@ -2,7 +2,9 @@ import argparse
 import inspect
 import json
 import pprint
+import sys
 import time
+import traceback
 from pathlib import Path
 
 import requests
@@ -90,14 +92,11 @@ class VveServer:
         return response.content
 
 
-def main(speaker_id):
+def main(texts, speaker_id):
     client = VveClient()
 
     server = VveServer(client)
     pprint.pprint(server.speakers())
-
-    with open("q/speech.txt", encoding="utf-8") as f:
-        texts = [line.strip() for line in f.readlines()]
 
     output_dir = Path("a/audio_query")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -133,8 +132,33 @@ def main(speaker_id):
 def run():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--speaker_id", type=int, default=0)
+    parser.add_argument(
+        "speech_file", nargs="?", type=argparse.FileType(mode="rb"), default=sys.stdin
+    )
+    parser.add_argument("-s", "--speaker_id", type=int, default=0, metavar="ID")
 
     args = parser.parse_args()
 
-    main(args.speaker_id)
+    byte_strings = args.speech_file.readlines()
+    if not byte_strings:
+        print("[Error] No input.")
+        exit(1)
+    elif byte_strings[0] == "\ufeff":
+        texts = [line.decode("utf-8-sig").strip() for line in byte_strings]
+    elif type(byte_strings[0]) == str:
+        try:
+            texts = [
+                line.encode("cp932", "surrogateescape").decode("utf-8").strip()
+                for line in byte_strings
+            ]
+        except UnicodeEncodeError:
+            if args.speech_file == sys.stdin:
+                print("[Error] Unreadable string(s) came from stdin.")
+            else:
+                print("[Error] Unreadable string(s) appeared in file.")
+            traceback.print_exc()
+            exit(1)
+    else:
+        texts = [line.decode("utf-8").strip() for line in byte_strings]
+
+    main(texts, args.speaker_id)
