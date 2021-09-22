@@ -92,38 +92,56 @@ class VveServer:
         return response.content
 
 
-def main(texts, speaker_id):
+def main(texts, text_src_name, speaker_id):
     client = VveClient()
 
     server = VveServer(client)
     pprint.pprint(server.speakers())
 
+    # audio_query
     output_dir = Path("a/audio_query")
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    for aq_path in output_dir.glob(
+        "{}-*_s{:02d}.json".format(text_src_name, speaker_id)
+    ):
+        aq_path.unlink()
 
     t3 = IntervalTimer()
     for i, text in enumerate(texts):
         aq = server.audio_query(text, speaker_id)
-        (output_dir / "text-{:03d}_s{:02d}.json".format(i + 1, speaker_id)).write_text(
-            json.dumps(aq, ensure_ascii=False), encoding="utf-8"
-        )
+        (
+            output_dir
+            / "{}-{:03d}_s{:02d}.json".format(text_src_name, i + 1, speaker_id)
+        ).write_text(json.dumps(aq, ensure_ascii=False), encoding="utf-8")
     print("{:.3f} [sec]".format(t3.elapsed()))
 
+    # synthesis
     input_dir = Path("a/audio_query")
 
     output_dir = Path("a/synthesis")
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    for wave_path in output_dir.glob(
+        "{}-*_s{:02d}.wav".format(text_src_name, speaker_id)
+    ):
+        wave_path.unlink()
+
     t4 = IntervalTimer()
-    for aq_path in input_dir.glob("*_s{:02d}.json".format(speaker_id)):
+    for aq_path in input_dir.glob(
+        "{}-*_s{:02d}.json".format(text_src_name, speaker_id)
+    ):
         wave = server.synthesis(
             json.loads(aq_path.read_text(encoding="utf-8")), speaker_id
         )
         (output_dir / (aq_path.stem + ".wav")).write_bytes(wave)
     print("{:.3f} [sec]".format(t4.elapsed()))
 
+    # playback
     input_dir = Path("a/synthesis")
-    for wave_path in input_dir.glob("*_s{:02d}.wav".format(speaker_id)):
+    for wave_path in input_dir.glob(
+        "{}-*_s{:02d}.wav".format(text_src_name, speaker_id)
+    ):
         wave_obj = simpleaudio.WaveObject.from_wave_file(wave_path.as_posix())
         play_obj = wave_obj.play()
         play_obj.wait_done()
@@ -161,4 +179,9 @@ def run():
     else:
         texts = [line.decode("utf-8").strip() for line in byte_strings]
 
-    main(texts, args.speaker_id)
+    if args.speech_file == sys.stdin:
+        text_src_name = "stdin"
+    else:
+        text_src_name = Path(args.speech_file.name).stem
+
+    main(texts, text_src_name, args.speaker_id)
