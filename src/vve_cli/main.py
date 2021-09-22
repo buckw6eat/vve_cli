@@ -60,6 +60,35 @@ class VveServer:
         )
         return response.json()
 
+    def audio_query(self, text, speaker_id):
+        t = IntervalTimer()
+        response = self.__client.post(
+            "/audio_query", params={"text": text, "speaker": speaker_id}
+        )
+        response_time = t.elapsed()
+        print(
+            "{:>18}:  {:.3f} [sec]  :  {:3d} : {}".format(
+                inspect.currentframe().f_code.co_name, response_time, len(text), text
+            )
+        )
+        return response.json()
+
+    def synthesis(self, aq_json, speaker_id):
+        t = IntervalTimer()
+        response = self.__client.post(
+            "/synthesis",
+            json=aq_json,
+            params={"speaker": speaker_id},
+            headers={"Content-Type": "application/json"},
+        )
+        response_time = t.elapsed()
+        print(
+            "{:>18}:  {:.3f} [sec]  : {}".format(
+                inspect.currentframe().f_code.co_name, response_time, aq_json["kana"]
+            )
+        )
+        return response.content
+
 
 def main(speaker_id):
     client = VveClient()
@@ -75,11 +104,9 @@ def main(speaker_id):
 
     t3 = IntervalTimer()
     for i, text in enumerate(texts):
-        response = client.post(
-            "/audio_query", params={"text": text, "speaker": speaker_id}
-        )
+        aq = server.audio_query(text, speaker_id)
         (output_dir / "text-{:03d}_s{:02d}.json".format(i + 1, speaker_id)).write_text(
-            json.dumps(response.json(), ensure_ascii=False), encoding="utf-8"
+            json.dumps(aq, ensure_ascii=False), encoding="utf-8"
         )
     print("{:.3f} [sec]".format(t3.elapsed()))
 
@@ -90,13 +117,10 @@ def main(speaker_id):
 
     t4 = IntervalTimer()
     for aq_path in input_dir.glob("*_s{:02d}.json".format(speaker_id)):
-        response = client.post(
-            "/synthesis",
-            json=json.loads(aq_path.read_text(encoding="utf-8")),
-            params={"speaker": speaker_id},
-            headers={"Content-Type": "application/json"},
+        wave = server.synthesis(
+            json.loads(aq_path.read_text(encoding="utf-8")), speaker_id
         )
-        (output_dir / (aq_path.stem + ".wav")).write_bytes(response.content)
+        (output_dir / (aq_path.stem + ".wav")).write_bytes(wave)
     print("{:.3f} [sec]".format(t4.elapsed()))
 
     input_dir = Path("a/synthesis")
