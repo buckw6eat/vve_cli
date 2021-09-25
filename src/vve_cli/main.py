@@ -34,7 +34,7 @@ class VveClient:
         )
 
 
-class VveServer:
+class VveService:
     def __init__(self, client: VveClient) -> None:
         self.__client = client
         version = self.version()
@@ -99,8 +99,8 @@ class VveServer:
 def main(texts, text_src_name, speaker_id):
     client = VveClient()
 
-    server = VveServer(client)
-    pprint.pprint(server.speakers())
+    service = VveService(client)
+    pprint.pprint(service.speakers())
 
     # audio_query
     output_dir = Path("a/audio_query")
@@ -113,7 +113,7 @@ def main(texts, text_src_name, speaker_id):
 
     t3 = IntervalTimer()
     for i, text in enumerate(texts):
-        aq = server.audio_query(text, speaker_id)
+        aq = service.audio_query(text, speaker_id)
         (
             output_dir
             / "{}-{:03d}_s{:02d}.json".format(text_src_name, i + 1, speaker_id)
@@ -135,7 +135,7 @@ def main(texts, text_src_name, speaker_id):
     for aq_path in input_dir.glob(
         "{}-*_s{:02d}.json".format(text_src_name, speaker_id)
     ):
-        wave = server.synthesis(
+        wave = service.synthesis(
             json.loads(aq_path.read_text(encoding="utf-8")), speaker_id
         )
         (output_dir / (aq_path.stem + ".wav")).write_bytes(wave)
