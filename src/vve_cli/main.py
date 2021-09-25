@@ -45,9 +45,10 @@ class VveServer:
         response = self.__client.get("/version")
         response_time = t.elapsed()
         print(
-            "{:>18}:  {:.3f} [sec]".format(
+            "{:>18}: {:7.3f} [sec]".format(
                 inspect.currentframe().f_code.co_name, response_time
-            )
+            ),
+            file=sys.stderr,
         )
         return response.json().strip()
 
@@ -56,9 +57,10 @@ class VveServer:
         response = self.__client.get("/speakers")
         response_time = t.elapsed()
         print(
-            "{:>18}:  {:.3f} [sec]".format(
+            "{:>18}: {:7.3f} [sec]".format(
                 inspect.currentframe().f_code.co_name, response_time
-            )
+            ),
+            file=sys.stderr,
         )
         return response.json()
 
@@ -69,9 +71,10 @@ class VveServer:
         )
         response_time = t.elapsed()
         print(
-            "{:>18}:  {:.3f} [sec]  :  {:3d} : {}".format(
+            "{:>18}: {:7.3f} [sec] : {:3d} : {}".format(
                 inspect.currentframe().f_code.co_name, response_time, len(text), text
-            )
+            ),
+            file=sys.stderr,
         )
         return response.json()
 
@@ -85,9 +88,10 @@ class VveServer:
         )
         response_time = t.elapsed()
         print(
-            "{:>18}:  {:.3f} [sec]  : {}".format(
+            "{:>18}: {:7.3f} [sec] : {}".format(
                 inspect.currentframe().f_code.co_name, response_time, aq_json["kana"]
-            )
+            ),
+            file=sys.stderr,
         )
         return response.content
 
