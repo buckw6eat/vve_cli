@@ -2,7 +2,6 @@ import inspect
 import sys
 
 import requests
-
 from vve_cli.main import IntervalTimer
 
 
@@ -77,6 +76,105 @@ class VveService:
         print(
             "{:>18}: {:7.3f} [sec] : {}".format(
                 inspect.currentframe().f_code.co_name, response_time, aq_json["kana"]
+            ),
+            file=sys.stderr,
+        )
+        return response.content
+
+    def accent_phrases(self, text, speaker_id, is_kana=False):
+        t = IntervalTimer()
+        response = self.__client.post(
+            "/accent_phrases",
+            params={"text": text, "speaker": speaker_id, "is_kana": is_kana},
+        )
+        response_time = t.elapsed()
+        print(
+            "{:>18}: {:7.3f} [sec] : {:3d} : {}".format(
+                inspect.currentframe().f_code.co_name, response_time, len(text), text
+            ),
+            file=sys.stderr,
+        )
+        return response.json()
+
+    def mora_data(self, accent_phrase_json, speaker_id):
+        t = IntervalTimer()
+        response = self.__client.post(
+            "/mora_data",
+            json=accent_phrase_json,
+            params={"speaker": speaker_id},
+            headers={"Content-Type": "application/json"},
+        )
+        response_time = t.elapsed()
+        print(
+            "{:>18}: {:7.3f} [sec]".format(
+                inspect.currentframe().f_code.co_name, response_time
+            ),
+            file=sys.stderr,
+        )
+        return response.json()
+
+    def mora_length(self, accent_phrase_json, speaker_id):
+        t = IntervalTimer()
+        response = self.__client.post(
+            "/mora_length",
+            json=accent_phrase_json,
+            params={"speaker": speaker_id},
+            headers={"Content-Type": "application/json"},
+        )
+        response_time = t.elapsed()
+        print(
+            "{:>18}: {:7.3f} [sec]".format(
+                inspect.currentframe().f_code.co_name, response_time
+            ),
+            file=sys.stderr,
+        )
+        return response.json()
+
+    def mora_pitch(self, accent_phrase_json, speaker_id):
+        t = IntervalTimer()
+        response = self.__client.post(
+            "/mora_pitch",
+            json=accent_phrase_json,
+            params={"speaker": speaker_id},
+            headers={"Content-Type": "application/json"},
+        )
+        response_time = t.elapsed()
+        print(
+            "{:>18}: {:7.3f} [sec]".format(
+                inspect.currentframe().f_code.co_name, response_time
+            ),
+            file=sys.stderr,
+        )
+        return response.json()
+
+    def multi_synthesis(self, aq_jsons, speaker_id):
+        t = IntervalTimer()
+        response = self.__client.post(
+            "/multi_synthesis",
+            json=aq_jsons,
+            params={"speaker": speaker_id},
+            headers={"Content-Type": "application/json"},
+        )
+        response_time = t.elapsed()
+        print(
+            "{:>18}: {:7.3f} [sec]".format(
+                inspect.currentframe().f_code.co_name, response_time
+            ),
+            file=sys.stderr,
+        )
+        return response.content
+
+    def connect_waves(self, base64_waves):
+        t = IntervalTimer()
+        response = self.__client.post(
+            "/connect_waves",
+            json=base64_waves,
+            headers={"Content-Type": "application/json"},
+        )
+        response_time = t.elapsed()
+        print(
+            "{:>18}: {:7.3f} [sec]".format(
+                inspect.currentframe().f_code.co_name, response_time
             ),
             file=sys.stderr,
         )
