@@ -8,8 +8,8 @@ from vve_cli.main import IntervalTimer
 class VveClient:
     __urlorigin: str
 
-    def __init__(self) -> None:
-        self.__urlorigin = "http://localhost:50021"
+    def __init__(self, host: str, port: int) -> None:
+        self.__urlorigin = "http://{}:{:d}".format(host, port)
 
     def get(self, url):
         return requests.get(self.__urlorigin + url)

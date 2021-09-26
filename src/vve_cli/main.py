@@ -21,7 +21,7 @@ from vve_cli.vve_service import VveClient, VveService
 
 
 def main(texts, text_src_name, speaker_id):
-    client = VveClient()
+    client = VveClient("localhost", 50021)
 
     service = VveService(client)
     pprint.pprint(service.speakers())
