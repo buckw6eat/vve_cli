@@ -97,6 +97,8 @@ def run():
                 line.encode("cp932", "surrogateescape").decode("utf-8").strip()
                 for line in byte_strings
             ]
+        except UnicodeDecodeError:
+            texts = [line.strip() for line in byte_strings]
         except UnicodeEncodeError:
             if args.speech_file == sys.stdin:
                 print("[Error] Unreadable string(s) came from stdin.")
