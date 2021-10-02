@@ -22,6 +22,31 @@ class IntervalTimer:
 from vve_cli.vve_service import VveClient, VveService
 
 
+class IndexedDumper:
+    def __init__(
+        self,
+        dump_dir: Path,
+        prefix: str,
+        postfix: str,
+        extention: str,
+    ) -> None:
+        self.__dump_dir = dump_dir
+        self.__dump_dir.mkdir(parents=True, exist_ok=True)
+        self.__format = f"{prefix}_{{}}_{postfix}.{extention}"
+
+    def remove_dumps(self):
+        for dump_path in self.__dump_dir.glob(self.__format.format("*")):
+            dump_path.unlink()
+
+    def dump_text(self, index: int, content: str, encoding: str = "utf-8"):
+        (self.__dump_dir / self.__format.format(f"{index:03d}")).write_text(
+            content, encoding=encoding
+        )
+
+    def dump_bytes(self, index: int, content: bytes):
+        (self.__dump_dir / self.__format.format(f"{index:03d}")).write_bytes(content)
+
+
 def main(texts, text_src_name, speaker_id):
     client = VveClient("localhost", 50021)
 
