@@ -4,6 +4,8 @@ import pprint
 import sys
 import time
 import traceback
+import wave
+from io import BytesIO
 from pathlib import Path
 
 import simpleaudio
@@ -44,7 +46,7 @@ def main(texts, text_src_name, speaker_id):
         ).write_text(json.dumps(aq, ensure_ascii=False), encoding="utf-8")
     print("{:.3f} [sec]".format(t3.elapsed()))
 
-    # synthesis
+    # synthesis & playback
     input_dir = Path("a/audio_query")
 
     output_dir = Path("a/synthesis")
@@ -55,24 +57,26 @@ def main(texts, text_src_name, speaker_id):
     ):
         wave_path.unlink()
 
+    play_obj = None
+
     t4 = IntervalTimer()
     for aq_path in input_dir.glob(
         "{}-*_s{:02d}.json".format(text_src_name, speaker_id)
     ):
-        wave = service.synthesis(
+        wave_response = service.synthesis(
             json.loads(aq_path.read_text(encoding="utf-8")), speaker_id
         )
-        (output_dir / (aq_path.stem + ".wav")).write_bytes(wave)
+        (output_dir / (aq_path.stem + ".wav")).write_bytes(wave_response)
+
+        if play_obj is not None:
+            play_obj.wait_done()
+        wave_obj = simpleaudio.WaveObject.from_wave_read(
+            wave.open(BytesIO(wave_response), mode="rb")
+        )
+        play_obj = wave_obj.play()
     print("{:.3f} [sec]".format(t4.elapsed()))
 
-    # playback
-    input_dir = Path("a/synthesis")
-    for wave_path in input_dir.glob(
-        "{}-*_s{:02d}.wav".format(text_src_name, speaker_id)
-    ):
-        wave_obj = simpleaudio.WaveObject.from_wave_file(wave_path.as_posix())
-        play_obj = wave_obj.play()
-        play_obj.wait_done()
+    play_obj.wait_done()
 
 
 def run():
