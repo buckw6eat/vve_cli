@@ -1,5 +1,6 @@
 import inspect
 import sys
+from json import JSONDecodeError
 
 import requests
 from vve_cli.main import IntervalTimer
@@ -36,7 +37,11 @@ class VveService:
             ),
             file=sys.stderr,
         )
-        return response.json().strip()
+        try:
+            json_response = response.json()
+        except JSONDecodeError:
+            json_response = {}
+        return json_response
 
     def speakers(self):
         t = IntervalTimer()
@@ -48,7 +53,11 @@ class VveService:
             ),
             file=sys.stderr,
         )
-        return response.json()
+        try:
+            json_response = response.json()
+        except JSONDecodeError:
+            json_response = {}
+        return json_response
 
     def audio_query(self, text, speaker_id):
         t = IntervalTimer()
@@ -62,7 +71,11 @@ class VveService:
             ),
             file=sys.stderr,
         )
-        return response.json()
+        try:
+            json_response = response.json()
+        except JSONDecodeError:
+            json_response = {}
+        return json_response
 
     def synthesis(self, aq_json, speaker_id):
         t = IntervalTimer()
@@ -94,7 +107,11 @@ class VveService:
             ),
             file=sys.stderr,
         )
-        return response.json()
+        try:
+            json_response = response.json()
+        except JSONDecodeError:
+            json_response = {}
+        return json_response
 
     def mora_data(self, accent_phrase_json, speaker_id):
         t = IntervalTimer()
@@ -111,7 +128,11 @@ class VveService:
             ),
             file=sys.stderr,
         )
-        return response.json()
+        try:
+            json_response = response.json()
+        except JSONDecodeError:
+            json_response = {}
+        return json_response
 
     def mora_length(self, accent_phrase_json, speaker_id):
         t = IntervalTimer()
@@ -128,7 +149,11 @@ class VveService:
             ),
             file=sys.stderr,
         )
-        return response.json()
+        try:
+            json_response = response.json()
+        except JSONDecodeError:
+            json_response = {}
+        return json_response
 
     def mora_pitch(self, accent_phrase_json, speaker_id):
         t = IntervalTimer()
@@ -145,7 +170,11 @@ class VveService:
             ),
             file=sys.stderr,
         )
-        return response.json()
+        try:
+            json_response = response.json()
+        except JSONDecodeError:
+            json_response = {}
+        return json_response
 
     def multi_synthesis(self, aq_jsons, speaker_id):
         t = IntervalTimer()
