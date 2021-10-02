@@ -47,7 +47,7 @@ class IndexedDumper:
         (self.__dump_dir / self.__format.format(f"{index:03d}")).write_bytes(content)
 
 
-def main(texts, text_src_name, speaker_id):
+def main(texts, text_src_name, speaker_id, is_batch = False):
     client = VveClient("localhost", 50021)
 
     service = VveService(client)
@@ -60,32 +60,56 @@ def main(texts, text_src_name, speaker_id):
     )
     audio_query_dumper.remove_dumps()
 
-    synthesis_dumper = IndexedDumper(
-        dump_root_dir / "synthesis", text_src_name, f"s{speaker_id:02d}", "wav"
-    )
-    synthesis_dumper.remove_dumps()
+    if not is_batch:
 
-    play_obj = None
-
-    t = IntervalTimer()
-    for i, text in enumerate(texts):
-        autio_query_response = service.audio_query(text, speaker_id)
-        audio_query_dumper.dump_text(
-            i + 1, json.dumps(autio_query_response, ensure_ascii=False)
+        synthesis_dumper = IndexedDumper(
+            dump_root_dir / "synthesis", text_src_name, f"s{speaker_id:02d}", "wav"
         )
+        synthesis_dumper.remove_dumps()
 
-        wave_response = service.synthesis(autio_query_response, speaker_id)
-        synthesis_dumper.dump_bytes(i + 1, wave_response)
+        play_obj = None
 
-        if play_obj is not None:
-            play_obj.wait_done()
-        wave_obj = simpleaudio.WaveObject.from_wave_read(
-            wave.open(BytesIO(wave_response), mode="rb")
+        t = IntervalTimer()
+        for i, text in enumerate(texts):
+            autio_query_response = service.audio_query(text, speaker_id)
+            audio_query_dumper.dump_text(
+                i + 1, json.dumps(autio_query_response, ensure_ascii=False)
+            )
+
+            wave_response = service.synthesis(autio_query_response, speaker_id)
+            synthesis_dumper.dump_bytes(i + 1, wave_response)
+
+            if play_obj is not None:
+                play_obj.wait_done()
+            wave_obj = simpleaudio.WaveObject.from_wave_read(
+                wave.open(BytesIO(wave_response), mode="rb")
+            )
+            play_obj = wave_obj.play()
+        print("{:.3f} [sec]".format(t.elapsed()))
+
+        play_obj.wait_done()
+
+    else:
+
+        multi_synthesis_dumper = IndexedDumper(
+            dump_root_dir / "multi_synthesis", text_src_name, f"s{speaker_id:02d}", "zip"
         )
-        play_obj = wave_obj.play()
-    print("{:.3f} [sec]".format(t.elapsed()))
+        multi_synthesis_dumper.remove_dumps()
 
-    play_obj.wait_done()
+        t = IntervalTimer()
+
+        audio_query_list = []
+        for i, text in enumerate(texts):
+            autio_query_response = service.audio_query(text, speaker_id)
+            audio_query_dumper.dump_text(
+                i + 1, json.dumps(autio_query_response, ensure_ascii=False)
+            )
+            audio_query_list.append(autio_query_response)
+
+        zip_response = service.multi_synthesis(audio_query_list, speaker_id)
+        multi_synthesis_dumper.dump_bytes(0, zip_response)
+
+        print("{:.3f} [sec]".format(t.elapsed()))
 
 
 def run():
