@@ -53,11 +53,19 @@ def main(texts, text_src_name, speaker_id):
     service = VveService(client)
     pprint.pprint(service.speakers())
 
-    # audio_query
+    dump_root_dir = Path("a")
+
     audio_query_dumper = IndexedDumper(
-        Path("a/audio_query"), text_src_name, f"s{speaker_id:02d}", "json"
+        dump_root_dir / "audio_query", text_src_name, f"s{speaker_id:02d}", "json"
     )
     audio_query_dumper.remove_dumps()
+
+    synthesis_dumper = IndexedDumper(
+        dump_root_dir / "synthesis", text_src_name, f"s{speaker_id:02d}", "wav"
+    )
+    synthesis_dumper.remove_dumps()
+
+    play_obj = None
 
     t3 = IntervalTimer()
     for i, text in enumerate(texts):
@@ -67,13 +75,6 @@ def main(texts, text_src_name, speaker_id):
 
     # synthesis & playback
     input_dir = Path("a/audio_query")
-
-    synthesis_dumper = IndexedDumper(
-        Path("a/synthesis"), text_src_name, f"s{speaker_id:02d}", "wav"
-    )
-    synthesis_dumper.remove_dumps()
-
-    play_obj = None
 
     t4 = IntervalTimer()
     for i, aq_path in enumerate(
