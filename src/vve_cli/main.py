@@ -54,44 +54,35 @@ def main(texts, text_src_name, speaker_id):
     pprint.pprint(service.speakers())
 
     # audio_query
-    output_dir = Path("a/audio_query")
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    for aq_path in output_dir.glob(
-        "{}-*_s{:02d}.json".format(text_src_name, speaker_id)
-    ):
-        aq_path.unlink()
+    audio_query_dumper = IndexedDumper(
+        Path("a/audio_query"), text_src_name, f"s{speaker_id:02d}", "json"
+    )
+    audio_query_dumper.remove_dumps()
 
     t3 = IntervalTimer()
     for i, text in enumerate(texts):
         aq = service.audio_query(text, speaker_id)
-        (
-            output_dir
-            / "{}-{:03d}_s{:02d}.json".format(text_src_name, i + 1, speaker_id)
-        ).write_text(json.dumps(aq, ensure_ascii=False), encoding="utf-8")
+        audio_query_dumper.dump_text(i + 1, json.dumps(aq, ensure_ascii=False))
     print("{:.3f} [sec]".format(t3.elapsed()))
 
     # synthesis & playback
     input_dir = Path("a/audio_query")
 
-    output_dir = Path("a/synthesis")
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    for wave_path in output_dir.glob(
-        "{}-*_s{:02d}.wav".format(text_src_name, speaker_id)
-    ):
-        wave_path.unlink()
+    synthesis_dumper = IndexedDumper(
+        Path("a/synthesis"), text_src_name, f"s{speaker_id:02d}", "wav"
+    )
+    synthesis_dumper.remove_dumps()
 
     play_obj = None
 
     t4 = IntervalTimer()
-    for aq_path in input_dir.glob(
-        "{}-*_s{:02d}.json".format(text_src_name, speaker_id)
+    for i, aq_path in enumerate(
+        input_dir.glob("{}_*_s{:02d}.json".format(text_src_name, speaker_id))
     ):
         wave_response = service.synthesis(
             json.loads(aq_path.read_text(encoding="utf-8")), speaker_id
         )
-        (output_dir / (aq_path.stem + ".wav")).write_bytes(wave_response)
+        synthesis_dumper.dump_bytes(i + 1, wave_response)
 
         if play_obj is not None:
             play_obj.wait_done()
