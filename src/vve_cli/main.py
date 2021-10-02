@@ -67,22 +67,14 @@ def main(texts, text_src_name, speaker_id):
 
     play_obj = None
 
-    t3 = IntervalTimer()
+    t = IntervalTimer()
     for i, text in enumerate(texts):
-        aq = service.audio_query(text, speaker_id)
-        audio_query_dumper.dump_text(i + 1, json.dumps(aq, ensure_ascii=False))
-    print("{:.3f} [sec]".format(t3.elapsed()))
-
-    # synthesis & playback
-    input_dir = Path("a/audio_query")
-
-    t4 = IntervalTimer()
-    for i, aq_path in enumerate(
-        input_dir.glob("{}_*_s{:02d}.json".format(text_src_name, speaker_id))
-    ):
-        wave_response = service.synthesis(
-            json.loads(aq_path.read_text(encoding="utf-8")), speaker_id
+        autio_query_response = service.audio_query(text, speaker_id)
+        audio_query_dumper.dump_text(
+            i + 1, json.dumps(autio_query_response, ensure_ascii=False)
         )
+
+        wave_response = service.synthesis(autio_query_response, speaker_id)
         synthesis_dumper.dump_bytes(i + 1, wave_response)
 
         if play_obj is not None:
@@ -91,7 +83,7 @@ def main(texts, text_src_name, speaker_id):
             wave.open(BytesIO(wave_response), mode="rb")
         )
         play_obj = wave_obj.play()
-    print("{:.3f} [sec]".format(t4.elapsed()))
+    print("{:.3f} [sec]".format(t.elapsed()))
 
     play_obj.wait_done()
 
