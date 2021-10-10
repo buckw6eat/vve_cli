@@ -149,7 +149,7 @@ def main(texts, text_src_name, speaker_id, is_batch=False):
 
 
 def run():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog="vve_cli")
 
     parser.add_argument(
         "speech_file", nargs="?", type=argparse.FileType(mode="rb"), default=sys.stdin
