@@ -1,8 +1,11 @@
 import inspect
 import sys
+from abc import ABCMeta, abstractmethod
 from json import JSONDecodeError
+from typing import Any, Dict
 
 import requests
+from requests.models import Response
 from vve_cli.main import IntervalTimer
 
 
@@ -21,43 +24,66 @@ class VveClient:
         )
 
 
+class EndPoint(metaclass=ABCMeta):
+    def run(self, client, **kwargs) -> Any:
+        t = IntervalTimer()
+
+        response = self.request(client, **kwargs)
+
+        response_time = t.elapsed()
+        self.put_log(response_time, response, **kwargs)
+
+        return self.set_content(response)
+
+    @abstractmethod
+    def request(self, client, **kwargs) -> Response:
+        pass
+
+    @abstractmethod
+    def put_log(self, response_time: float, response: Response, **kwargs) -> None:
+        pass
+
+    @abstractmethod
+    def set_content(self, response: Response, **kwargs) -> Any:
+        pass
+
+
+class InformationQueryAPI(EndPoint):
+    def __init__(self, api_name: str) -> None:
+        self.__api_name = api_name
+
+    def request(self, client, **kwargs) -> Response:
+        return client.get(f"/{self.__api_name}")
+
+    def put_log(self, response_time: float, response: Response, **kwargs) -> None:
+        print(
+            f"{self.__api_name:>18}: {response_time:7.3f} [sec]",
+            file=sys.stderr,
+        )
+
+    def set_content(self, response: Response, **kwargs) -> Any:
+        try:
+            json_response = response.json()
+        except JSONDecodeError:
+            json_response = {}
+        return json_response
+
+
 class VveService:
     def __init__(self, client: VveClient) -> None:
         self.__client = client
-        version = self.version()
-        print("{:>18}:  {}".format("ENGINE version", version))
 
-    def version(self):
-        t = IntervalTimer()
-        response = self.__client.get("/version")
-        response_time = t.elapsed()
-        print(
-            "{:>18}: {:7.3f} [sec]".format(
-                inspect.currentframe().f_code.co_name, response_time
-            ),
-            file=sys.stderr,
-        )
-        try:
-            json_response = response.json()
-        except JSONDecodeError:
-            json_response = {}
-        return json_response
+        self.__apis: Dict[str, EndPoint] = {}
+        self.__apis["version"] = InformationQueryAPI("version")
+        self.__apis["speakers"] = InformationQueryAPI("speakers")
 
-    def speakers(self):
-        t = IntervalTimer()
-        response = self.__client.get("/speakers")
-        response_time = t.elapsed()
-        print(
-            "{:>18}: {:7.3f} [sec]".format(
-                inspect.currentframe().f_code.co_name, response_time
-            ),
-            file=sys.stderr,
-        )
-        try:
-            json_response = response.json()
-        except JSONDecodeError:
-            json_response = {}
-        return json_response
+    def version(self) -> str:
+        api_name = inspect.currentframe().f_code.co_name
+        return self.__apis[api_name].run(client=self.__client)
+
+    def speakers(self) -> Dict[str, Any]:
+        api_name = inspect.currentframe().f_code.co_name
+        return self.__apis[api_name].run(client=self.__client)
 
     def audio_query(self, text, speaker_id):
         t = IntervalTimer()

@@ -53,6 +53,8 @@ def main(texts, text_src_name, speaker_id, is_batch=False):
     client = VveClient("localhost", 50021)
 
     service = VveService(client)
+    version = service.version()
+    print("{:>18}:  {}".format("ENGINE version", version))
     pprint.pprint(service.speakers())
 
     dump_root_dir = Path("a")
