@@ -95,6 +95,18 @@ class TextToAudioQueryAPI(EndPoint):
         return json_response
 
 
+class TextToAccentPhrasesAPI(TextToAudioQueryAPI):
+    def __init__(self, api_name: str) -> None:
+        super().__init__(api_name)
+        self.__api_name = api_name
+
+    def request(self, client, text, speaker_id, is_kana=False, **kwargs) -> Response:
+        return client.post(
+            f"/{self.__api_name}",
+            params={"text": text, "speaker": speaker_id, "is_kana": is_kana},
+        )
+
+
 class AccentPhraseEditAPI(InformationQueryAPI):
     def __init__(self, api_name: str) -> None:
         super().__init__(api_name)
@@ -121,6 +133,7 @@ class VveService:
 
         self.__apis["audio_query"] = TextToAudioQueryAPI("audio_query")
 
+        self.__apis["accent_phrases"] = TextToAccentPhrasesAPI("accent_phrases")
         self.__apis["mora_data"] = AccentPhraseEditAPI("mora_data")
         self.__apis["mora_length"] = AccentPhraseEditAPI("mora_length")
         self.__apis["mora_pitch"] = AccentPhraseEditAPI("mora_pitch")
@@ -171,24 +184,13 @@ class VveService:
         )
         return response.content
 
-    def accent_phrases(self, text, speaker_id, is_kana=False):
-        t = IntervalTimer()
-        response = self.__client.post(
-            "/accent_phrases",
-            params={"text": text, "speaker": speaker_id, "is_kana": is_kana},
+    def accent_phrases(
+        self, text: str, speaker_id: int, is_kana: bool = False
+    ) -> List[Dict[str, Any]]:
+        api_name = inspect.currentframe().f_code.co_name
+        return self.__apis[api_name].run(
+            client=self.__client, text=text, speaker_id=speaker_id, is_kana=is_kana
         )
-        response_time = t.elapsed()
-        print(
-            "{:>18}: {:7.3f} [sec] : {:3d} : {}".format(
-                inspect.currentframe().f_code.co_name, response_time, len(text), text
-            ),
-            file=sys.stderr,
-        )
-        try:
-            json_response = response.json()
-        except JSONDecodeError:
-            json_response = {}
-        return json_response
 
     def mora_data(
         self, accent_phrases: List[Dict[str, Any]], speaker_id: int
