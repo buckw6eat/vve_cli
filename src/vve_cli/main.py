@@ -5,8 +5,10 @@ import sys
 import time
 import traceback
 import wave
+from base64 import standard_b64encode
 from io import BytesIO
 from pathlib import Path
+from zipfile import ZipFile
 
 import simpleaudio
 
@@ -92,9 +94,17 @@ def main(texts, text_src_name, speaker_id, is_batch = False):
     else:
 
         multi_synthesis_dumper = IndexedDumper(
-            dump_root_dir / "multi_synthesis", text_src_name, f"s{speaker_id:02d}", "zip"
+            dump_root_dir / "multi_synthesis",
+            text_src_name,
+            f"s{speaker_id:02d}",
+            "zip",
         )
         multi_synthesis_dumper.remove_dumps()
+
+        connect_waves_dumper = IndexedDumper(
+            dump_root_dir / "connect_waves", text_src_name, f"s{speaker_id:02d}", "wav"
+        )
+        connect_waves_dumper.remove_dumps()
 
         t = IntervalTimer()
 
@@ -108,6 +118,17 @@ def main(texts, text_src_name, speaker_id, is_batch = False):
 
         zip_response = service.multi_synthesis(audio_query_list, speaker_id)
         multi_synthesis_dumper.dump_bytes(0, zip_response)
+
+        wava_b64_list = []
+        with ZipFile(BytesIO(zip_response)) as waves_zip:
+            for wave_name in waves_zip.namelist():
+                with waves_zip.open(wave_name) as wave_file:
+                    wava_b64_list.append(
+                        standard_b64encode(wave_file.read()).decode("utf-8")
+                    )
+
+        wave_response = service.connect_waves(wava_b64_list)
+        connect_waves_dumper.dump_bytes(0, wave_response)
 
         print("{:.3f} [sec]".format(t.elapsed()))
 
