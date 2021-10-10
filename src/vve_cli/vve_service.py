@@ -69,6 +69,32 @@ class InformationQueryAPI(EndPoint):
         return json_response
 
 
+class TextToAudioQueryAPI(EndPoint):
+    def __init__(self, api_name: str) -> None:
+        self.__api_name = api_name
+
+    def request(self, client, text, speaker_id, **kwargs) -> Response:
+        return client.post(
+            f"/{self.__api_name}", params={"text": text, "speaker": speaker_id}
+        )
+
+    def put_log(self, response_time: float, response: Response, text, **kwargs) -> None:
+        print(
+            (
+                f"{self.__api_name:>18}: {response_time:7.3f} [sec]"
+                f" : {len(text):3d} : {text}"
+            ),
+            file=sys.stderr,
+        )
+
+    def set_content(self, response: Response, **kwargs) -> Any:
+        try:
+            json_response = response.json()
+        except JSONDecodeError:
+            json_response = {}
+        return json_response
+
+
 class AccentPhraseEditAPI(InformationQueryAPI):
     def __init__(self, api_name: str) -> None:
         super().__init__(api_name)
@@ -93,6 +119,8 @@ class VveService:
         self.__apis["version"] = InformationQueryAPI("version")
         self.__apis["speakers"] = InformationQueryAPI("speakers")
 
+        self.__apis["audio_query"] = TextToAudioQueryAPI("audio_query")
+
         self.__apis["mora_data"] = AccentPhraseEditAPI("mora_data")
         self.__apis["mora_length"] = AccentPhraseEditAPI("mora_length")
         self.__apis["mora_pitch"] = AccentPhraseEditAPI("mora_pitch")
@@ -105,23 +133,11 @@ class VveService:
         api_name = inspect.currentframe().f_code.co_name
         return self.__apis[api_name].run(client=self.__client)
 
-    def audio_query(self, text, speaker_id):
-        t = IntervalTimer()
-        response = self.__client.post(
-            "/audio_query", params={"text": text, "speaker": speaker_id}
+    def audio_query(self, text: str, speaker_id: int) -> Dict[str, Any]:
+        api_name = inspect.currentframe().f_code.co_name
+        return self.__apis[api_name].run(
+            client=self.__client, text=text, speaker_id=speaker_id
         )
-        response_time = t.elapsed()
-        print(
-            "{:>18}: {:7.3f} [sec] : {:3d} : {}".format(
-                inspect.currentframe().f_code.co_name, response_time, len(text), text
-            ),
-            file=sys.stderr,
-        )
-        try:
-            json_response = response.json()
-        except JSONDecodeError:
-            json_response = {}
-        return json_response
 
     def synthesis(self, aq_json, speaker_id):
         t = IntervalTimer()
