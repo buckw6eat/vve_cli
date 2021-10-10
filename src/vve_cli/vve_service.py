@@ -95,6 +95,50 @@ class TextToAudioQueryAPI(EndPoint):
         return json_response
 
 
+class SynthesisAPI(EndPoint):
+    def __init__(self, api_name: str) -> None:
+        self.__api_name = api_name
+
+    def request(
+        self, client, audio_query: Dict[str, Any], speaker_id, **kwargs
+    ) -> Response:
+        return client.post(
+            f"/{self.__api_name}",
+            json=audio_query,
+            params={"speaker": speaker_id},
+            headers={"Content-Type": "application/json"},
+        )
+
+    def put_log(
+        self,
+        response_time: float,
+        response: Response,
+        audio_query: Dict[str, Any],
+        **kwargs,
+    ) -> None:
+        speech_text = "".join(
+            [
+                mora["text"]
+                for accent_phrase in audio_query["accent_phrases"]
+                for mora in (
+                    accent_phrase["moras"] + [accent_phrase["pause_mora"]]
+                    if accent_phrase["pause_mora"] is not None
+                    else accent_phrase["moras"]
+                )
+            ]
+        )
+        print(
+            (
+                f"{self.__api_name:>18}: {response_time:7.3f} [sec]"
+                f" : {len(speech_text):3d} : {speech_text}"
+            ),
+            file=sys.stderr,
+        )
+
+    def set_content(self, response: Response, **kwargs) -> Any:
+        return response.content
+
+
 class TextToAccentPhrasesAPI(TextToAudioQueryAPI):
     def __init__(self, api_name: str) -> None:
         super().__init__(api_name)
@@ -132,6 +176,7 @@ class VveService:
         self.__apis["speakers"] = InformationQueryAPI("speakers")
 
         self.__apis["audio_query"] = TextToAudioQueryAPI("audio_query")
+        self.__apis["synthesis"] = SynthesisAPI("synthesis")
 
         self.__apis["accent_phrases"] = TextToAccentPhrasesAPI("accent_phrases")
         self.__apis["mora_data"] = AccentPhraseEditAPI("mora_data")
@@ -152,37 +197,11 @@ class VveService:
             client=self.__client, text=text, speaker_id=speaker_id
         )
 
-    def synthesis(self, aq_json, speaker_id):
-        t = IntervalTimer()
-        response = self.__client.post(
-            "/synthesis",
-            json=aq_json,
-            params={"speaker": speaker_id},
-            headers={"Content-Type": "application/json"},
+    def synthesis(self, audio_query: Dict[str, Any], speaker_id: int) -> bytes:
+        api_name = inspect.currentframe().f_code.co_name
+        return self.__apis[api_name].run(
+            client=self.__client, audio_query=audio_query, speaker_id=speaker_id
         )
-        response_time = t.elapsed()
-
-        speech_text = "".join(
-            [
-                mora["text"]
-                for accent_phrase in aq_json["accent_phrases"]
-                for mora in (
-                    accent_phrase["moras"] + [accent_phrase["pause_mora"]]
-                    if accent_phrase["pause_mora"] is not None
-                    else accent_phrase["moras"]
-                )
-            ]
-        )
-        print(
-            "{:>18}: {:7.3f} [sec] : {:3d} : {}".format(
-                inspect.currentframe().f_code.co_name,
-                response_time,
-                len(speech_text),
-                speech_text,
-            ),
-            file=sys.stderr,
-        )
-        return response.content
 
     def accent_phrases(
         self, text: str, speaker_id: int, is_kana: bool = False
