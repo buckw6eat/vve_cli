@@ -86,9 +86,24 @@ class VveService:
             headers={"Content-Type": "application/json"},
         )
         response_time = t.elapsed()
+
+        speech_text = "".join(
+            [
+                mora["text"]
+                for accent_phrase in aq_json["accent_phrases"]
+                for mora in (
+                    accent_phrase["moras"] + [accent_phrase["pause_mora"]]
+                    if accent_phrase["pause_mora"] is not None
+                    else accent_phrase["moras"]
+                )
+            ]
+        )
         print(
-            "{:>18}: {:7.3f} [sec] : {}".format(
-                inspect.currentframe().f_code.co_name, response_time, aq_json["kana"]
+            "{:>18}: {:7.3f} [sec] : {:3d} : {}".format(
+                inspect.currentframe().f_code.co_name,
+                response_time,
+                len(speech_text),
+                speech_text,
             ),
             file=sys.stderr,
         )
