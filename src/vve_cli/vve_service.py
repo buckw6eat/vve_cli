@@ -2,7 +2,7 @@ import inspect
 import sys
 from abc import ABCMeta, abstractmethod
 from json import JSONDecodeError
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import requests
 from requests.models import Response
@@ -69,6 +69,22 @@ class InformationQueryAPI(EndPoint):
         return json_response
 
 
+class AccentPhraseEditAPI(InformationQueryAPI):
+    def __init__(self, api_name: str) -> None:
+        super().__init__(api_name)
+        self.__api_name = api_name
+
+    def request(
+        self, client, accent_phrases: List[Dict[str, Any]], speaker_id: int, **kwargs
+    ) -> Response:
+        return client.post(
+            f"/{self.__api_name}",
+            json=accent_phrases,
+            params={"speaker": speaker_id},
+            headers={"Content-Type": "application/json"},
+        )
+
+
 class VveService:
     def __init__(self, client: VveClient) -> None:
         self.__client = client
@@ -76,6 +92,10 @@ class VveService:
         self.__apis: Dict[str, EndPoint] = {}
         self.__apis["version"] = InformationQueryAPI("version")
         self.__apis["speakers"] = InformationQueryAPI("speakers")
+
+        self.__apis["mora_data"] = AccentPhraseEditAPI("mora_data")
+        self.__apis["mora_length"] = AccentPhraseEditAPI("mora_length")
+        self.__apis["mora_pitch"] = AccentPhraseEditAPI("mora_pitch")
 
     def version(self) -> str:
         api_name = inspect.currentframe().f_code.co_name
@@ -154,68 +174,29 @@ class VveService:
             json_response = {}
         return json_response
 
-    def mora_data(self, accent_phrase_json, speaker_id):
-        t = IntervalTimer()
-        response = self.__client.post(
-            "/mora_data",
-            json=accent_phrase_json,
-            params={"speaker": speaker_id},
-            headers={"Content-Type": "application/json"},
+    def mora_data(
+        self, accent_phrases: List[Dict[str, Any]], speaker_id: int
+    ) -> List[Dict[str, Any]]:
+        api_name = inspect.currentframe().f_code.co_name
+        return self.__apis[api_name].run(
+            client=self.__client, accent_phrases=accent_phrases, speaker_id=speaker_id
         )
-        response_time = t.elapsed()
-        print(
-            "{:>18}: {:7.3f} [sec]".format(
-                inspect.currentframe().f_code.co_name, response_time
-            ),
-            file=sys.stderr,
-        )
-        try:
-            json_response = response.json()
-        except JSONDecodeError:
-            json_response = {}
-        return json_response
 
-    def mora_length(self, accent_phrase_json, speaker_id):
-        t = IntervalTimer()
-        response = self.__client.post(
-            "/mora_length",
-            json=accent_phrase_json,
-            params={"speaker": speaker_id},
-            headers={"Content-Type": "application/json"},
+    def mora_length(
+        self, accent_phrases: List[Dict[str, Any]], speaker_id: int
+    ) -> List[Dict[str, Any]]:
+        api_name = inspect.currentframe().f_code.co_name
+        return self.__apis[api_name].run(
+            client=self.__client, accent_phrases=accent_phrases, speaker_id=speaker_id
         )
-        response_time = t.elapsed()
-        print(
-            "{:>18}: {:7.3f} [sec]".format(
-                inspect.currentframe().f_code.co_name, response_time
-            ),
-            file=sys.stderr,
-        )
-        try:
-            json_response = response.json()
-        except JSONDecodeError:
-            json_response = {}
-        return json_response
 
-    def mora_pitch(self, accent_phrase_json, speaker_id):
-        t = IntervalTimer()
-        response = self.__client.post(
-            "/mora_pitch",
-            json=accent_phrase_json,
-            params={"speaker": speaker_id},
-            headers={"Content-Type": "application/json"},
+    def mora_pitch(
+        self, accent_phrases: List[Dict[str, Any]], speaker_id: int
+    ) -> List[Dict[str, Any]]:
+        api_name = inspect.currentframe().f_code.co_name
+        return self.__apis[api_name].run(
+            client=self.__client, accent_phrases=accent_phrases, speaker_id=speaker_id
         )
-        response_time = t.elapsed()
-        print(
-            "{:>18}: {:7.3f} [sec]".format(
-                inspect.currentframe().f_code.co_name, response_time
-            ),
-            file=sys.stderr,
-        )
-        try:
-            json_response = response.json()
-        except JSONDecodeError:
-            json_response = {}
-        return json_response
 
     def multi_synthesis(self, aq_jsons, speaker_id):
         t = IntervalTimer()
