@@ -1,4 +1,3 @@
-import inspect
 import sys
 from abc import ABCMeta, abstractmethod
 from json import JSONDecodeError
@@ -232,67 +231,57 @@ class VveService:
         self.__apis["connect_waves"] = ConcatWavesAPI("connect_waves")
 
     def version(self) -> str:
-        api_name = inspect.currentframe().f_code.co_name
-        return self.__apis[api_name].run(client=self.__client)
+        return self.__apis["version"].run(client=self.__client)
 
     def speakers(self) -> Dict[str, Any]:
-        api_name = inspect.currentframe().f_code.co_name
-        return self.__apis[api_name].run(client=self.__client)
+        return self.__apis["speakers"].run(client=self.__client)
 
     def audio_query(self, text: str, speaker_id: int) -> Dict[str, Any]:
-        api_name = inspect.currentframe().f_code.co_name
-        return self.__apis[api_name].run(
+        return self.__apis["audio_query"].run(
             client=self.__client, text=text, speaker_id=speaker_id
         )
 
     def synthesis(self, audio_query: Dict[str, Any], speaker_id: int) -> bytes:
-        api_name = inspect.currentframe().f_code.co_name
-        return self.__apis[api_name].run(
+        return self.__apis["synthesis"].run(
             client=self.__client, audio_query=audio_query, speaker_id=speaker_id
         )
 
     def accent_phrases(
         self, text: str, speaker_id: int, is_kana: bool = False
     ) -> List[Dict[str, Any]]:
-        api_name = inspect.currentframe().f_code.co_name
-        return self.__apis[api_name].run(
+        return self.__apis["accent_phrases"].run(
             client=self.__client, text=text, speaker_id=speaker_id, is_kana=is_kana
         )
 
     def mora_data(
         self, accent_phrases: List[Dict[str, Any]], speaker_id: int
     ) -> List[Dict[str, Any]]:
-        api_name = inspect.currentframe().f_code.co_name
-        return self.__apis[api_name].run(
+        return self.__apis["mora_data"].run(
             client=self.__client, accent_phrases=accent_phrases, speaker_id=speaker_id
         )
 
     def mora_length(
         self, accent_phrases: List[Dict[str, Any]], speaker_id: int
     ) -> List[Dict[str, Any]]:
-        api_name = inspect.currentframe().f_code.co_name
-        return self.__apis[api_name].run(
+        return self.__apis["mora_length"].run(
             client=self.__client, accent_phrases=accent_phrases, speaker_id=speaker_id
         )
 
     def mora_pitch(
         self, accent_phrases: List[Dict[str, Any]], speaker_id: int
     ) -> List[Dict[str, Any]]:
-        api_name = inspect.currentframe().f_code.co_name
-        return self.__apis[api_name].run(
+        return self.__apis["mora_pitch"].run(
             client=self.__client, accent_phrases=accent_phrases, speaker_id=speaker_id
         )
 
     def multi_synthesis(
         self, audio_queries: List[Dict[str, Any]], speaker_id: int
     ) -> bytes:
-        api_name = inspect.currentframe().f_code.co_name
-        return self.__apis[api_name].run(
+        return self.__apis["multi_synthesis"].run(
             client=self.__client, audio_queries=audio_queries, speaker_id=speaker_id
         )
 
-    def connect_waves(self, base64_waves: List[str]):
-        api_name = inspect.currentframe().f_code.co_name
-        return self.__apis[api_name].run(
+    def connect_waves(self, base64_waves: List[str]) -> bytes:
+        return self.__apis["connect_waves"].run(
             client=self.__client, base64_waves=base64_waves
         )
