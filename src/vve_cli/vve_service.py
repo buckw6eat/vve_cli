@@ -167,6 +167,30 @@ class AccentPhraseEditAPI(InformationQueryAPI):
         )
 
 
+class BatchSynthesisAPI(EndPoint):
+    def __init__(self, api_name: str) -> None:
+        self.__api_name = api_name
+
+    def request(
+        self, client, audio_queries: List[Dict[str, Any]], speaker_id, **kwargs
+    ) -> Response:
+        return client.post(
+            f"/{self.__api_name}",
+            json=audio_queries,
+            params={"speaker": speaker_id},
+            headers={"Content-Type": "application/json"},
+        )
+
+    def put_log(self, response_time: float, response: Response, **kwargs) -> None:
+        print(
+            f"{self.__api_name:>18}: {response_time:7.3f} [sec]",
+            file=sys.stderr,
+        )
+
+    def set_content(self, response: Response, **kwargs) -> Any:
+        return response.content
+
+
 class VveService:
     def __init__(self, client: VveClient) -> None:
         self.__client = client
@@ -182,6 +206,8 @@ class VveService:
         self.__apis["mora_data"] = AccentPhraseEditAPI("mora_data")
         self.__apis["mora_length"] = AccentPhraseEditAPI("mora_length")
         self.__apis["mora_pitch"] = AccentPhraseEditAPI("mora_pitch")
+
+        self.__apis["multi_synthesis"] = BatchSynthesisAPI("multi_synthesis")
 
     def version(self) -> str:
         api_name = inspect.currentframe().f_code.co_name
@@ -235,22 +261,13 @@ class VveService:
             client=self.__client, accent_phrases=accent_phrases, speaker_id=speaker_id
         )
 
-    def multi_synthesis(self, aq_jsons, speaker_id):
-        t = IntervalTimer()
-        response = self.__client.post(
-            "/multi_synthesis",
-            json=aq_jsons,
-            params={"speaker": speaker_id},
-            headers={"Content-Type": "application/json"},
+    def multi_synthesis(
+        self, audio_queries: List[Dict[str, Any]], speaker_id: int
+    ) -> bytes:
+        api_name = inspect.currentframe().f_code.co_name
+        return self.__apis[api_name].run(
+            client=self.__client, audio_queries=audio_queries, speaker_id=speaker_id
         )
-        response_time = t.elapsed()
-        print(
-            "{:>18}: {:7.3f} [sec]".format(
-                inspect.currentframe().f_code.co_name, response_time
-            ),
-            file=sys.stderr,
-        )
-        return response.content
 
     def connect_waves(self, base64_waves):
         t = IntervalTimer()
