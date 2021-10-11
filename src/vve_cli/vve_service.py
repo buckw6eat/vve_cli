@@ -191,6 +191,27 @@ class BatchSynthesisAPI(EndPoint):
         return response.content
 
 
+class ConcatWavesAPI(EndPoint):
+    def __init__(self, api_name: str) -> None:
+        self.__api_name = api_name
+
+    def request(self, client, base64_waves: List[str], **kwargs) -> Response:
+        return client.post(
+            f"/{self.__api_name}",
+            json=base64_waves,
+            headers={"Content-Type": "application/json"},
+        )
+
+    def put_log(self, response_time: float, response: Response, **kwargs) -> None:
+        print(
+            f"{self.__api_name:>18}: {response_time:7.3f} [sec]",
+            file=sys.stderr,
+        )
+
+    def set_content(self, response: Response, **kwargs) -> Any:
+        return response.content
+
+
 class VveService:
     def __init__(self, client: VveClient) -> None:
         self.__client = client
@@ -208,6 +229,7 @@ class VveService:
         self.__apis["mora_pitch"] = AccentPhraseEditAPI("mora_pitch")
 
         self.__apis["multi_synthesis"] = BatchSynthesisAPI("multi_synthesis")
+        self.__apis["connect_waves"] = ConcatWavesAPI("connect_waves")
 
     def version(self) -> str:
         api_name = inspect.currentframe().f_code.co_name
@@ -269,18 +291,8 @@ class VveService:
             client=self.__client, audio_queries=audio_queries, speaker_id=speaker_id
         )
 
-    def connect_waves(self, base64_waves):
-        t = IntervalTimer()
-        response = self.__client.post(
-            "/connect_waves",
-            json=base64_waves,
-            headers={"Content-Type": "application/json"},
+    def connect_waves(self, base64_waves: List[str]):
+        api_name = inspect.currentframe().f_code.co_name
+        return self.__apis[api_name].run(
+            client=self.__client, base64_waves=base64_waves
         )
-        response_time = t.elapsed()
-        print(
-            "{:>18}: {:7.3f} [sec]".format(
-                inspect.currentframe().f_code.co_name, response_time
-            ),
-            file=sys.stderr,
-        )
-        return response.content
