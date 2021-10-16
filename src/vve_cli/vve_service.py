@@ -66,7 +66,15 @@ class InformationQueryAPI(EndPoint):
     def _request(self, client, **kwargs) -> Response:
         return client.get(f"/{self._api_name}")
 
-    def _set_content(self, response: Response, **kwargs) -> Any:
+    def _set_content(self, response: Response, tag: str = "", **kwargs) -> Any:
+        if self._dump_dir is not None:
+            if self._dumper is None:
+                self._dumper = TaggedDumper(self._dump_dir / self._api_name, "json")
+            if tag:
+                self._dumper.dump(response.text, tag)
+            else:
+                self._dumper.dump(response.text)
+
         try:
             json_response = response.json()
         except JSONDecodeError:
@@ -192,8 +200,8 @@ class VveService:
         self.__client = client
 
         self.__apis: Dict[str, EndPoint] = {}
-        self.__apis["version"] = InformationQueryAPI("version")
-        self.__apis["speakers"] = InformationQueryAPI("speakers")
+        self.__apis["version"] = InformationQueryAPI("version", Path("a"))
+        self.__apis["speakers"] = InformationQueryAPI("speakers", Path("a"))
 
         self.__apis["audio_query"] = TextToAudioQueryAPI("audio_query")
         self.__apis["synthesis"] = SynthesisAPI("synthesis")
