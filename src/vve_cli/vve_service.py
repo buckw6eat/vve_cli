@@ -83,13 +83,13 @@ class InformationQueryAPI(EndPoint):
 
 
 class TextToAudioQueryAPI(EndPoint):
-    def _request(self, client, text, speaker_id, **kwargs) -> Response:
+    def _request(self, client, text: str, speaker_id: int, **kwargs) -> Response:
         return client.post(
             f"/{self._api_name}", params={"text": text, "speaker": speaker_id}
         )
 
     def _put_log(
-        self, response_time: float, response: Response, text, **kwargs
+        self, response_time: float, response: Response, text: str, **kwargs
     ) -> None:
         print(
             (
@@ -99,7 +99,16 @@ class TextToAudioQueryAPI(EndPoint):
             file=sys.stderr,
         )
 
-    def _set_content(self, response: Response, **kwargs) -> Any:
+    def _set_content(
+        self, response: Response, speaker_id: int, tag: str = "dump", **kwargs
+    ) -> Any:
+        if self._dump_dir is not None:
+            if self._dumper is None:
+                self._dumper = TaggedDumper(
+                    self._dump_dir / self._api_name, "json", is_indexed=True
+                )
+            self._dumper.dump(response.text, tag + f"_s{speaker_id:02d}")
+
         try:
             json_response = response.json()
         except JSONDecodeError:
@@ -203,10 +212,12 @@ class VveService:
         self.__apis["version"] = InformationQueryAPI("version", Path("a"))
         self.__apis["speakers"] = InformationQueryAPI("speakers", Path("a"))
 
-        self.__apis["audio_query"] = TextToAudioQueryAPI("audio_query")
+        self.__apis["audio_query"] = TextToAudioQueryAPI("audio_query", Path("a"))
         self.__apis["synthesis"] = SynthesisAPI("synthesis")
 
-        self.__apis["accent_phrases"] = TextToAccentPhrasesAPI("accent_phrases")
+        self.__apis["accent_phrases"] = TextToAccentPhrasesAPI(
+            "accent_phrases", Path("a")
+        )
         self.__apis["mora_data"] = AccentPhraseEditAPI("mora_data")
         self.__apis["mora_length"] = AccentPhraseEditAPI("mora_length")
         self.__apis["mora_pitch"] = AccentPhraseEditAPI("mora_pitch")
