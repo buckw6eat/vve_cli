@@ -29,23 +29,23 @@ class MetaEndPoint(metaclass=ABCMeta):
     def run(self, client, **kwargs) -> Any:
         t = IntervalTimer()
 
-        response = self.request(client, **kwargs)
+        response = self._request(client, **kwargs)
 
         response_time = t.elapsed()
-        self.put_log(response_time, response, **kwargs)
+        self._put_log(response_time, response, **kwargs)
 
-        return self.set_content(response)
+        return self._set_content(response)
 
     @abstractmethod
-    def request(self, client, **kwargs) -> Response:
+    def _request(self, client, **kwargs) -> Response:
         pass
 
     @abstractmethod
-    def put_log(self, response_time: float, response: Response, **kwargs) -> None:
+    def _put_log(self, response_time: float, response: Response, **kwargs) -> None:
         pass
 
     @abstractmethod
-    def set_content(self, response: Response, **kwargs) -> Any:
+    def _set_content(self, response: Response, **kwargs) -> Any:
         pass
 
 
@@ -55,7 +55,7 @@ class EndPoint(MetaEndPoint):
         self._dump_dir = dump_dir
         self._dumper: Optional[TaggedDumper] = None
 
-    def put_log(self, response_time: float, response: Response, **kwargs) -> None:
+    def _put_log(self, response_time: float, response: Response, **kwargs) -> None:
         print(
             f"{self._api_name:>18}: {response_time:7.3f} [sec]",
             file=sys.stderr,
@@ -63,10 +63,10 @@ class EndPoint(MetaEndPoint):
 
 
 class InformationQueryAPI(EndPoint):
-    def request(self, client, **kwargs) -> Response:
+    def _request(self, client, **kwargs) -> Response:
         return client.get(f"/{self._api_name}")
 
-    def set_content(self, response: Response, **kwargs) -> Any:
+    def _set_content(self, response: Response, **kwargs) -> Any:
         try:
             json_response = response.json()
         except JSONDecodeError:
@@ -75,12 +75,14 @@ class InformationQueryAPI(EndPoint):
 
 
 class TextToAudioQueryAPI(EndPoint):
-    def request(self, client, text, speaker_id, **kwargs) -> Response:
+    def _request(self, client, text, speaker_id, **kwargs) -> Response:
         return client.post(
             f"/{self._api_name}", params={"text": text, "speaker": speaker_id}
         )
 
-    def put_log(self, response_time: float, response: Response, text, **kwargs) -> None:
+    def _put_log(
+        self, response_time: float, response: Response, text, **kwargs
+    ) -> None:
         print(
             (
                 f"{self._api_name:>18}: {response_time:7.3f} [sec]"
@@ -89,7 +91,7 @@ class TextToAudioQueryAPI(EndPoint):
             file=sys.stderr,
         )
 
-    def set_content(self, response: Response, **kwargs) -> Any:
+    def _set_content(self, response: Response, **kwargs) -> Any:
         try:
             json_response = response.json()
         except JSONDecodeError:
@@ -98,7 +100,7 @@ class TextToAudioQueryAPI(EndPoint):
 
 
 class SynthesisAPI(EndPoint):
-    def request(
+    def _request(
         self, client, audio_query: Dict[str, Any], speaker_id, **kwargs
     ) -> Response:
         return client.post(
@@ -108,7 +110,7 @@ class SynthesisAPI(EndPoint):
             headers={"Content-Type": "application/json"},
         )
 
-    def put_log(
+    def _put_log(
         self,
         response_time: float,
         response: Response,
@@ -134,12 +136,12 @@ class SynthesisAPI(EndPoint):
             file=sys.stderr,
         )
 
-    def set_content(self, response: Response, **kwargs) -> Any:
+    def _set_content(self, response: Response, **kwargs) -> Any:
         return response.content
 
 
 class TextToAccentPhrasesAPI(TextToAudioQueryAPI):
-    def request(self, client, text, speaker_id, is_kana=False, **kwargs) -> Response:
+    def _request(self, client, text, speaker_id, is_kana=False, **kwargs) -> Response:
         return client.post(
             f"/{self._api_name}",
             params={"text": text, "speaker": speaker_id, "is_kana": is_kana},
@@ -147,7 +149,7 @@ class TextToAccentPhrasesAPI(TextToAudioQueryAPI):
 
 
 class AccentPhraseEditAPI(InformationQueryAPI):
-    def request(
+    def _request(
         self, client, accent_phrases: List[Dict[str, Any]], speaker_id: int, **kwargs
     ) -> Response:
         return client.post(
@@ -159,7 +161,7 @@ class AccentPhraseEditAPI(InformationQueryAPI):
 
 
 class BatchSynthesisAPI(EndPoint):
-    def request(
+    def _request(
         self, client, audio_queries: List[Dict[str, Any]], speaker_id, **kwargs
     ) -> Response:
         return client.post(
@@ -169,19 +171,19 @@ class BatchSynthesisAPI(EndPoint):
             headers={"Content-Type": "application/json"},
         )
 
-    def set_content(self, response: Response, **kwargs) -> Any:
+    def _set_content(self, response: Response, **kwargs) -> Any:
         return response.content
 
 
 class ConcatWavesAPI(EndPoint):
-    def request(self, client, base64_waves: List[str], **kwargs) -> Response:
+    def _request(self, client, base64_waves: List[str], **kwargs) -> Response:
         return client.post(
             f"/{self._api_name}",
             json=base64_waves,
             headers={"Content-Type": "application/json"},
         )
 
-    def set_content(self, response: Response, **kwargs) -> Any:
+    def _set_content(self, response: Response, **kwargs) -> Any:
         return response.content
 
 
