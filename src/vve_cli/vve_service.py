@@ -251,76 +251,69 @@ class ConcatWavesAPI(EndPoint):
 class VveService:
     def __init__(self, client: VveClient) -> None:
         self.__client = client
+        self.__dump_root_dir: Optional[Path] = Path("a")
 
         self.__apis: Dict[str, EndPoint] = {}
-        self.__apis["version"] = InformationQueryAPI("version", Path("a"))
-        self.__apis["speakers"] = InformationQueryAPI("speakers", Path("a"))
 
-        self.__apis["audio_query"] = TextToAudioQueryAPI("audio_query", Path("a"))
-        self.__apis["synthesis"] = SynthesisAPI("synthesis", Path("a"))
-
-        self.__apis["accent_phrases"] = TextToAccentPhrasesAPI(
-            "accent_phrases", Path("a")
-        )
-        self.__apis["mora_data"] = AccentPhraseEditAPI("mora_data", Path("a"))
-        self.__apis["mora_length"] = AccentPhraseEditAPI("mora_length", Path("a"))
-        self.__apis["mora_pitch"] = AccentPhraseEditAPI("mora_pitch", Path("a"))
-
-        self.__apis["multi_synthesis"] = BatchSynthesisAPI("multi_synthesis", Path("a"))
-        self.__apis["connect_waves"] = ConcatWavesAPI("connect_waves", Path("a"))
+    def _get_api(self, endpoint_type, api_name):
+        if not api_name in self.__apis:
+            self.__apis[api_name] = endpoint_type(api_name, self.__dump_root_dir)
+        return self.__apis[api_name]
 
     def version(self) -> str:
-        return self.__apis["version"].run(client=self.__client)
+        api = self._get_api(InformationQueryAPI, "version")
+        return api.run(self.__client)
 
     def speakers(self) -> Dict[str, Any]:
-        return self.__apis["speakers"].run(client=self.__client)
+        api = self._get_api(InformationQueryAPI, "speakers")
+        return api.run(self.__client)
 
     def audio_query(self, text: str, speaker_id: int) -> Dict[str, Any]:
-        return self.__apis["audio_query"].run(
-            client=self.__client, text=text, speaker_id=speaker_id
-        )
+        api = self._get_api(TextToAudioQueryAPI, "audio_query")
+        return api.run(self.__client, text=text, speaker_id=speaker_id)
 
     def synthesis(self, audio_query: Dict[str, Any], speaker_id: int) -> bytes:
-        return self.__apis["synthesis"].run(
-            client=self.__client, audio_query=audio_query, speaker_id=speaker_id
-        )
+        api = self._get_api(SynthesisAPI, "synthesis")
+        return api.run(self.__client, audio_query=audio_query, speaker_id=speaker_id)
 
     def accent_phrases(
         self, text: str, speaker_id: int, is_kana: bool = False
     ) -> List[Dict[str, Any]]:
-        return self.__apis["accent_phrases"].run(
-            client=self.__client, text=text, speaker_id=speaker_id, is_kana=is_kana
-        )
+        api = self._get_api(TextToAccentPhrasesAPI, "accent_phrases")
+        return api.run(self.__client, text=text, speaker_id=speaker_id, is_kana=is_kana)
 
     def mora_data(
         self, accent_phrases: List[Dict[str, Any]], speaker_id: int
     ) -> List[Dict[str, Any]]:
-        return self.__apis["mora_data"].run(
-            client=self.__client, accent_phrases=accent_phrases, speaker_id=speaker_id
+        api = self._get_api(AccentPhraseEditAPI, "mora_data")
+        return api.run(
+            self.__client, accent_phrases=accent_phrases, speaker_id=speaker_id
         )
 
     def mora_length(
         self, accent_phrases: List[Dict[str, Any]], speaker_id: int
     ) -> List[Dict[str, Any]]:
-        return self.__apis["mora_length"].run(
-            client=self.__client, accent_phrases=accent_phrases, speaker_id=speaker_id
+        api = self._get_api(AccentPhraseEditAPI, "mora_length")
+        return api.run(
+            self.__client, accent_phrases=accent_phrases, speaker_id=speaker_id
         )
 
     def mora_pitch(
         self, accent_phrases: List[Dict[str, Any]], speaker_id: int
     ) -> List[Dict[str, Any]]:
-        return self.__apis["mora_pitch"].run(
-            client=self.__client, accent_phrases=accent_phrases, speaker_id=speaker_id
+        api = self._get_api(AccentPhraseEditAPI, "mora_pitch")
+        return api.run(
+            self.__client, accent_phrases=accent_phrases, speaker_id=speaker_id
         )
 
     def multi_synthesis(
         self, audio_queries: List[Dict[str, Any]], speaker_id: int
     ) -> bytes:
-        return self.__apis["multi_synthesis"].run(
-            client=self.__client, audio_queries=audio_queries, speaker_id=speaker_id
+        api = self._get_api(BatchSynthesisAPI, "multi_synthesis")
+        return api.run(
+            self.__client, audio_queries=audio_queries, speaker_id=speaker_id
         )
 
     def connect_waves(self, base64_waves: List[str]) -> bytes:
-        return self.__apis["connect_waves"].run(
-            client=self.__client, base64_waves=base64_waves
-        )
+        api = self._get_api(ConcatWavesAPI, "connect_waves")
+        return api.run(self.__client, base64_waves=base64_waves)
