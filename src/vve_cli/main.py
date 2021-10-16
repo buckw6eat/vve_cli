@@ -1,5 +1,4 @@
 import argparse
-import json
 import pprint
 import sys
 import time
@@ -24,31 +23,6 @@ class IntervalTimer:
 from vve_cli.vve_service import VveClient, VveService
 
 
-class IndexedDumper:
-    def __init__(
-        self,
-        dump_dir: Path,
-        prefix: str,
-        postfix: str,
-        extention: str,
-    ) -> None:
-        self.__dump_dir = dump_dir
-        self.__dump_dir.mkdir(parents=True, exist_ok=True)
-        self.__format = f"{prefix}_{{}}_{postfix}.{extention}"
-
-    def remove_dumps(self):
-        for dump_path in self.__dump_dir.glob(self.__format.format("*")):
-            dump_path.unlink()
-
-    def dump_text(self, index: int, content: str, encoding: str = "utf-8"):
-        (self.__dump_dir / self.__format.format(f"{index:03d}")).write_text(
-            content, encoding=encoding
-        )
-
-    def dump_bytes(self, index: int, content: bytes):
-        (self.__dump_dir / self.__format.format(f"{index:03d}")).write_bytes(content)
-
-
 def main(texts, text_src_name, speaker_id, is_batch=False):
     client = VveClient("localhost", 50021)
 
@@ -59,44 +33,19 @@ def main(texts, text_src_name, speaker_id, is_batch=False):
 
     dump_root_dir = Path("a")
 
-    audio_query_dumper = IndexedDumper(
-        dump_root_dir / "audio_query", text_src_name, f"s{speaker_id:02d}", "json"
-    )
-    audio_query_dumper.remove_dumps()
-
     if not is_batch:
-
-        accent_phrases_dumper = IndexedDumper(
-            dump_root_dir / "accent_phrases",
-            text_src_name,
-            f"s{speaker_id:02d}",
-            "json",
-        )
-        accent_phrases_dumper.remove_dumps()
-
-        synthesis_dumper = IndexedDumper(
-            dump_root_dir / "synthesis", text_src_name, f"s{speaker_id:02d}", "wav"
-        )
-        synthesis_dumper.remove_dumps()
 
         play_obj = None
 
         t = IntervalTimer()
 
         autio_query_response = service.audio_query("", speaker_id)
-        audio_query_dumper.dump_text(
-            0, json.dumps(autio_query_response, ensure_ascii=False)
-        )
 
         for i, text in enumerate(texts):
             accent_phrases_response = service.accent_phrases(text, speaker_id)
-            accent_phrases_dumper.dump_text(
-                i + 1, json.dumps(accent_phrases_response, ensure_ascii=False)
-            )
             autio_query_response["accent_phrases"] = accent_phrases_response
 
             wave_response = service.synthesis(autio_query_response, speaker_id)
-            synthesis_dumper.dump_bytes(i + 1, wave_response)
 
             if play_obj is not None:
                 play_obj.wait_done()
@@ -110,31 +59,14 @@ def main(texts, text_src_name, speaker_id, is_batch=False):
 
     else:
 
-        multi_synthesis_dumper = IndexedDumper(
-            dump_root_dir / "multi_synthesis",
-            text_src_name,
-            f"s{speaker_id:02d}",
-            "zip",
-        )
-        multi_synthesis_dumper.remove_dumps()
-
-        connect_waves_dumper = IndexedDumper(
-            dump_root_dir / "connect_waves", text_src_name, f"s{speaker_id:02d}", "wav"
-        )
-        connect_waves_dumper.remove_dumps()
-
         t = IntervalTimer()
 
         audio_query_list = []
         for i, text in enumerate(texts):
             autio_query_response = service.audio_query(text, speaker_id)
-            audio_query_dumper.dump_text(
-                i + 1, json.dumps(autio_query_response, ensure_ascii=False)
-            )
             audio_query_list.append(autio_query_response)
 
         zip_response = service.multi_synthesis(audio_query_list, speaker_id)
-        multi_synthesis_dumper.dump_bytes(0, zip_response)
 
         wava_b64_list = []
         with ZipFile(BytesIO(zip_response)) as waves_zip:
@@ -145,7 +77,6 @@ def main(texts, text_src_name, speaker_id, is_batch=False):
                     )
 
         wave_response = service.connect_waves(wava_b64_list)
-        connect_waves_dumper.dump_bytes(0, wave_response)
 
         print("{:.3f} [sec]".format(t.elapsed()))
 
