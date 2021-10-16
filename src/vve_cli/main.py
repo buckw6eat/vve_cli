@@ -1,11 +1,13 @@
 import argparse
 import pprint
+import re
 import sys
 import time
 import traceback
 import wave
 from base64 import standard_b64encode
 from io import BytesIO
+from operator import itemgetter
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -91,6 +93,48 @@ def run():
     parser.add_argument("--batch", action="store_true")
     parser.add_argument("--dump_dir", type=Path, default=None)
 
+    def range_tuple(arg: str):
+        line_numbers = []
+
+        for number in arg.split(","):
+            pattern = r"(\d*)[-:](\d*)"
+            result = re.match(pattern, number)
+            if result:
+                if result.group(1) and result.group(2):
+                    start = int(result.group(1))
+                    stop = int(result.group(2))
+                    if stop >= start:
+                        line_numbers.append(slice(start - 1, stop))
+                    else:
+                        print(
+                            "[Warn] start:stop form should be stop >= start, Ignored."
+                        )
+                elif result.group(1):
+                    start = int(result.group(1))
+                    line_numbers.append(slice(start - 1, None))
+                elif result.group(2):
+                    stop = int(result.group(2))
+                    line_numbers.append(slice(stop))
+                else:
+                    line_numbers.append(slice(None))
+            else:
+                line_numbers.append(int(number) - 1)
+
+        return tuple(line_numbers)
+
+    parser.add_argument(
+        "-n",
+        "--line_numbers",
+        type=range_tuple,
+        metavar="N",
+        help=(
+            "Specify line number of input texts."
+            ' Range (from n to m means "n-m" or "n:m", both numbers are optional)'
+            ' , multiple line numbers as comma-separated list ("n,m")'
+            ' and mixture them are allowed. e.g. "n-m,i,j"'
+        ),
+    )
+
     args = parser.parse_args()
 
     service = VveService(VveClient(args.host, args.port), args.dump_dir)
@@ -118,6 +162,25 @@ def run():
             exit(1)
     else:
         texts = [line.decode("utf-8").strip() for line in byte_strings]
+
+    if args.line_numbers:
+        try:
+            items = itemgetter(*args.line_numbers)(texts)
+            if type(items) is tuple:
+                texts = []
+                for item in items:
+                    if type(item) is list:
+                        texts.extend(item)
+                    else:
+                        texts.append(item)
+            elif type(items) is list:
+                texts = items
+            else:
+                texts = [items]
+
+        except IndexError:
+            print("[Error] -n/--line_numbers has invalid index.")
+            exit(1)
 
     if args.speech_file == sys.stdin:
         text_src_name = "stdin"
