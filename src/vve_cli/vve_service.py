@@ -118,7 +118,7 @@ class TextToAudioQueryAPI(EndPoint):
 
 class SynthesisAPI(EndPoint):
     def _request(
-        self, client, audio_query: Dict[str, Any], speaker_id, **kwargs
+        self, client, audio_query: Dict[str, Any], speaker_id: int, **kwargs
     ) -> Response:
         return client.post(
             f"/{self._api_name}",
@@ -153,7 +153,16 @@ class SynthesisAPI(EndPoint):
             file=sys.stderr,
         )
 
-    def _set_content(self, response: Response, **kwargs) -> Any:
+    def _set_content(
+        self, response: Response, speaker_id: int, tag: str = "dump", **kwargs
+    ) -> Any:
+        if self._dump_dir is not None:
+            if self._dumper is None:
+                self._dumper = TaggedDumper(
+                    self._dump_dir / self._api_name, "wav", is_indexed=True
+                )
+            self._dumper.dump(response.content, tag + f"_s{speaker_id:02d}")
+
         return response.content
 
 
@@ -229,7 +238,7 @@ class VveService:
         self.__apis["speakers"] = InformationQueryAPI("speakers", Path("a"))
 
         self.__apis["audio_query"] = TextToAudioQueryAPI("audio_query", Path("a"))
-        self.__apis["synthesis"] = SynthesisAPI("synthesis")
+        self.__apis["synthesis"] = SynthesisAPI("synthesis", Path("a"))
 
         self.__apis["accent_phrases"] = TextToAccentPhrasesAPI(
             "accent_phrases", Path("a")
