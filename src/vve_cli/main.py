@@ -26,12 +26,13 @@ from vve_cli.vve_service import VveClient, VveService
 def main(texts, text_src_name, speaker_id, is_batch=False):
     client = VveClient("localhost", 50021)
 
-    service = VveService(client)
+    dump_root_dir = Path("a")
+    service = VveService(client, dump_root_dir)
     version = service.version()
     print("{:>18}:  {}".format("ENGINE version", version))
     pprint.pprint(service.speakers())
 
-    dump_root_dir = Path("a")
+    tag = text_src_name
 
     if not is_batch:
 
@@ -41,11 +42,11 @@ def main(texts, text_src_name, speaker_id, is_batch=False):
 
         autio_query_response = service.audio_query("", speaker_id)
 
-        for i, text in enumerate(texts):
-            accent_phrases_response = service.accent_phrases(text, speaker_id)
+        for text in texts:
+            accent_phrases_response = service.accent_phrases(text, speaker_id, tag=tag)
             autio_query_response["accent_phrases"] = accent_phrases_response
 
-            wave_response = service.synthesis(autio_query_response, speaker_id)
+            wave_response = service.synthesis(autio_query_response, speaker_id, tag=tag)
 
             if play_obj is not None:
                 play_obj.wait_done()
@@ -62,11 +63,11 @@ def main(texts, text_src_name, speaker_id, is_batch=False):
         t = IntervalTimer()
 
         audio_query_list = []
-        for i, text in enumerate(texts):
-            autio_query_response = service.audio_query(text, speaker_id)
+        for text in texts:
+            autio_query_response = service.audio_query(text, speaker_id, tag=tag)
             audio_query_list.append(autio_query_response)
 
-        zip_response = service.multi_synthesis(audio_query_list, speaker_id)
+        zip_response = service.multi_synthesis(audio_query_list, speaker_id, tag=tag)
 
         wava_b64_list = []
         with ZipFile(BytesIO(zip_response)) as waves_zip:
@@ -76,7 +77,7 @@ def main(texts, text_src_name, speaker_id, is_batch=False):
                         standard_b64encode(wave_file.read()).decode("utf-8")
                     )
 
-        wave_response = service.connect_waves(wava_b64_list)
+        wave_response = service.connect_waves(wava_b64_list, tag=tag)
 
         print("{:.3f} [sec]".format(t.elapsed()))
 
