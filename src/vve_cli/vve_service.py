@@ -165,7 +165,7 @@ class TextToAccentPhrasesAPI(TextToAudioQueryAPI):
         )
 
 
-class AccentPhraseEditAPI(InformationQueryAPI):
+class AccentPhraseEditAPI(EndPoint):
     def _request(
         self, client, accent_phrases: List[Dict[str, Any]], speaker_id: int, **kwargs
     ) -> Response:
@@ -175,6 +175,22 @@ class AccentPhraseEditAPI(InformationQueryAPI):
             params={"speaker": speaker_id},
             headers={"Content-Type": "application/json"},
         )
+
+    def _set_content(
+        self, response: Response, speaker_id: int, tag: str = "dump", **kwargs
+    ) -> Any:
+        if self._dump_dir is not None:
+            if self._dumper is None:
+                self._dumper = TaggedDumper(
+                    self._dump_dir / self._api_name, "json", is_indexed=True
+                )
+            self._dumper.dump(response.text, tag + f"_s{speaker_id:02d}")
+
+        try:
+            json_response = response.json()
+        except JSONDecodeError:
+            json_response = {}
+        return json_response
 
 
 class BatchSynthesisAPI(EndPoint):
@@ -218,9 +234,9 @@ class VveService:
         self.__apis["accent_phrases"] = TextToAccentPhrasesAPI(
             "accent_phrases", Path("a")
         )
-        self.__apis["mora_data"] = AccentPhraseEditAPI("mora_data")
-        self.__apis["mora_length"] = AccentPhraseEditAPI("mora_length")
-        self.__apis["mora_pitch"] = AccentPhraseEditAPI("mora_pitch")
+        self.__apis["mora_data"] = AccentPhraseEditAPI("mora_data", Path("a"))
+        self.__apis["mora_length"] = AccentPhraseEditAPI("mora_length", Path("a"))
+        self.__apis["mora_pitch"] = AccentPhraseEditAPI("mora_pitch", Path("a"))
 
         self.__apis["multi_synthesis"] = BatchSynthesisAPI("multi_synthesis")
         self.__apis["connect_waves"] = ConcatWavesAPI("connect_waves")
