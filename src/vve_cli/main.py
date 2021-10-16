@@ -23,11 +23,8 @@ class IntervalTimer:
 from vve_cli.vve_service import VveClient, VveService
 
 
-def main(texts, text_src_name, speaker_id, is_batch=False):
-    client = VveClient("localhost", 50021)
+def main(service, texts, text_src_name, speaker_id, is_batch=False):
 
-    dump_root_dir = Path("a")
-    service = VveService(client, dump_root_dir)
     version = service.version()
     print("{:>18}:  {}".format("ENGINE version", version))
     pprint.pprint(service.speakers())
@@ -88,9 +85,15 @@ def run():
     parser.add_argument(
         "speech_file", nargs="?", type=argparse.FileType(mode="rb"), default=sys.stdin
     )
-    parser.add_argument("-s", "--speaker_id", type=int, default=0, metavar="ID")
+    parser.add_argument("-s", "--speaker_id", type=int, metavar="ID")
+    parser.add_argument("--host", type=str, default="localhost")
+    parser.add_argument("--port", type=int, default=50021)
+    parser.add_argument("--batch", action="store_true")
+    parser.add_argument("--dump_dir", type=Path, default=None)
 
     args = parser.parse_args()
+
+    service = VveService(VveClient(args.host, args.port), args.dump_dir)
 
     byte_strings = args.speech_file.readlines()
     if not byte_strings:
@@ -121,4 +124,9 @@ def run():
     else:
         text_src_name = Path(args.speech_file.name).stem
 
-    main(texts, text_src_name, args.speaker_id)
+    if args.speaker_id:
+        speaker_id = args.speaker_id
+    else:
+        speaker_id = 0
+
+    main(service, texts, text_src_name, speaker_id, args.batch)
