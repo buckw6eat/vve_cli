@@ -204,7 +204,7 @@ class AccentPhraseEditAPI(EndPoint):
 
 class BatchSynthesisAPI(EndPoint):
     def _request(
-        self, client, audio_queries: List[Dict[str, Any]], speaker_id, **kwargs
+        self, client, audio_queries: List[Dict[str, Any]], speaker_id: int, **kwargs
     ) -> Response:
         return client.post(
             f"/{self._api_name}",
@@ -213,7 +213,16 @@ class BatchSynthesisAPI(EndPoint):
             headers={"Content-Type": "application/json"},
         )
 
-    def _set_content(self, response: Response, **kwargs) -> Any:
+    def _set_content(
+        self, response: Response, speaker_id: int, tag: str = "dump", **kwargs
+    ) -> Any:
+        if self._dump_dir is not None:
+            if self._dumper is None:
+                self._dumper = TaggedDumper(
+                    self._dump_dir / self._api_name, "zip", is_indexed=True
+                )
+            self._dumper.dump(response.content, tag + f"_s{speaker_id:02d}")
+
         return response.content
 
 
@@ -225,7 +234,17 @@ class ConcatWavesAPI(EndPoint):
             headers={"Content-Type": "application/json"},
         )
 
-    def _set_content(self, response: Response, **kwargs) -> Any:
+    def _set_content(self, response: Response, tag: str = "", **kwargs) -> Any:
+        if self._dump_dir is not None:
+            if self._dumper is None:
+                self._dumper = TaggedDumper(
+                    self._dump_dir / self._api_name, "wav", is_indexed=True
+                )
+            if tag:
+                self._dumper.dump(response.content, tag)
+            else:
+                self._dumper.dump(response.content)
+
         return response.content
 
 
@@ -247,8 +266,8 @@ class VveService:
         self.__apis["mora_length"] = AccentPhraseEditAPI("mora_length", Path("a"))
         self.__apis["mora_pitch"] = AccentPhraseEditAPI("mora_pitch", Path("a"))
 
-        self.__apis["multi_synthesis"] = BatchSynthesisAPI("multi_synthesis")
-        self.__apis["connect_waves"] = ConcatWavesAPI("connect_waves")
+        self.__apis["multi_synthesis"] = BatchSynthesisAPI("multi_synthesis", Path("a"))
+        self.__apis["connect_waves"] = ConcatWavesAPI("connect_waves", Path("a"))
 
     def version(self) -> str:
         return self.__apis["version"].run(client=self.__client)
