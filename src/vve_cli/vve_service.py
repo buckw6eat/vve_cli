@@ -34,7 +34,7 @@ class MetaEndPoint(metaclass=ABCMeta):
         response_time = t.elapsed()
         self._put_log(response_time, response, **kwargs)
 
-        return self._set_content(response)
+        return self._set_content(response, **kwargs)
 
     @abstractmethod
     def _request(self, client, **kwargs) -> Response:
