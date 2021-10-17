@@ -165,9 +165,12 @@ class SynthesisAPI(EndPoint):
 
 class TextToAccentPhrasesAPI(TextToAudioQueryAPI):
     def _request(self, client, text, speaker_id, is_kana=False, **kwargs) -> Response:
+        # OpenAPI boolean should be lowercase keyword
+        flag_kana = "true" if is_kana else "false"
+
         return client.post(
             f"/{self._api_name}",
-            params={"text": text, "speaker": speaker_id, "is_kana": is_kana},
+            params={"text": text, "speaker": speaker_id, "is_kana": flag_kana},
         )
 
 
