@@ -135,10 +135,12 @@ class SynthesisAPI(EndPoint):
             [
                 mora["text"]
                 for accent_phrase in audio_query["accent_phrases"]
-                for mora in (
-                    accent_phrase["moras"] + [accent_phrase["pause_mora"]]
-                    if accent_phrase["pause_mora"] is not None
-                    else accent_phrase["moras"]
+                for mora in accent_phrase["moras"]
+                + (
+                    [accent_phrase["pause_mora"]]
+                    if "pause_mora" in accent_phrase
+                    and accent_phrase["pause_mora"] is not None
+                    else []
                 )
             ]
         )
