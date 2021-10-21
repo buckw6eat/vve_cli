@@ -1,10 +1,10 @@
-import argparse
 import pprint
 import re
 import sys
 import time
 import traceback
 import wave
+from argparse import ArgumentParser, FileType
 from base64 import standard_b64encode
 from io import BytesIO
 from operator import itemgetter
@@ -82,16 +82,21 @@ def main(service, texts, text_src_name, speaker_id, is_batch=False):
 
 
 def run():
-    parser = argparse.ArgumentParser(prog="vve_cli")
+    parser = ArgumentParser(prog="vve_cli")
 
     parser.add_argument(
-        "speech_file", nargs="?", type=argparse.FileType(mode="rb"), default=sys.stdin
+        "speech_file", nargs="?", type=FileType(mode="rb"), default=sys.stdin
     )
-    parser.add_argument("-s", "--speaker_id", type=int, metavar="ID")
-    parser.add_argument("--host", type=str, default="localhost")
-    parser.add_argument("--port", type=int, default=50021)
+
+    def set_common_arguments(parser: ArgumentParser):
+        parser.add_argument("-s", "--speaker_id", type=int, metavar="ID")
+        parser.add_argument("--host", type=str, default="localhost")
+        parser.add_argument("--port", type=int, default=50021)
+        parser.add_argument("--dump_dir", type=Path)
+
+    set_common_arguments(parser)
+
     parser.add_argument("--batch", action="store_true")
-    parser.add_argument("--dump_dir", type=Path, default=None)
 
     def range_tuple(arg: str):
         line_numbers = []
@@ -100,23 +105,13 @@ def run():
             pattern = r"(\d*)[-:](\d*)"
             result = re.match(pattern, number)
             if result:
-                if result.group(1) and result.group(2):
-                    start = int(result.group(1))
-                    stop = int(result.group(2))
-                    if stop >= start:
-                        line_numbers.append(slice(start - 1, stop))
-                    else:
-                        print(
-                            "[Warn] start:stop form should be stop >= start, Ignored."
-                        )
-                elif result.group(1):
-                    start = int(result.group(1))
-                    line_numbers.append(slice(start - 1, None))
-                elif result.group(2):
-                    stop = int(result.group(2))
-                    line_numbers.append(slice(stop))
+                start = int(result.group(1)) - 1 if result.group(1) else None
+                stop = int(result.group(2)) if result.group(2) else None
+
+                if start and stop and not stop >= start:
+                    print("[Warn] start:stop form should be stop >= start, Ignored.")
                 else:
-                    line_numbers.append(slice(None))
+                    line_numbers.append(slice(start, stop))
             else:
                 line_numbers.append(int(number) - 1)
 
