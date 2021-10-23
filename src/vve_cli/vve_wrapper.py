@@ -1,9 +1,9 @@
-import inspect
 import json
 import re
 import sys
 from argparse import ArgumentParser, Namespace
 from base64 import standard_b64encode
+from inspect import getmembers, isfunction
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -32,14 +32,11 @@ def main(args: Namespace) -> None:
     }
     kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
-    call_list = inspect.getmembers(sys.modules[__name__], inspect.isfunction)
-    call_target = [
-        func for (name, func) in call_list if name == "call_" + args.api_name
-    ]
-
     try:
-        if call_target:
-            call_target[0](service, **kwargs)
+        for name, target_api in getmembers(sys.modules[__name__], isfunction):
+            if name == "call_" + args.api_name:
+                target_api(service, **kwargs)
+                break
         else:
             raise ValueError("[Error] Invalied api name or not implemented")
     except (TypeError, ValueError) as e:
