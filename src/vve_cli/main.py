@@ -22,6 +22,7 @@ class IntervalTimer:
         return round(time.perf_counter() - self.__start, 3)
 
 
+from vve_cli import vve_wrapper
 from vve_cli.vve_service import VveClient, VveService
 
 
@@ -82,9 +83,11 @@ def main(service, texts, text_src_name, speaker_id, is_batch=False):
 
 
 def run():
-    parser = ArgumentParser(prog="vve_cli")
+    main_parser = ArgumentParser(prog="vve_cli")
+    subparsers = main_parser.add_subparsers()
 
-    parser.add_argument(
+    tts_parser = subparsers.add_parser("tts", help="see `tts -h`")
+    tts_parser.add_argument(
         "speech_file", nargs="?", type=FileType(mode="rb"), default=sys.stdin
     )
 
@@ -94,9 +97,9 @@ def run():
         parser.add_argument("--port", type=int, default=50021)
         parser.add_argument("--dump_dir", type=Path)
 
-    set_common_arguments(parser)
+    set_common_arguments(tts_parser)
 
-    parser.add_argument("--batch", action="store_true")
+    tts_parser.add_argument("--batch", action="store_true")
 
     def range_tuple(arg: str):
         line_numbers = []
@@ -117,7 +120,7 @@ def run():
 
         return tuple(line_numbers)
 
-    parser.add_argument(
+    tts_parser.add_argument(
         "-n",
         "--line_numbers",
         type=range_tuple,
@@ -130,61 +133,72 @@ def run():
         ),
     )
 
-    args = parser.parse_args()
+    api_parser = subparsers.add_parser("api", help="see `api -h`")
+    set_common_arguments(api_parser)
+    vve_wrapper.set_arguments(api_parser)
 
-    service = VveService(VveClient(args.host, args.port), args.dump_dir)
+    args = main_parser.parse_args()
 
-    byte_strings = args.speech_file.readlines()
-    if not byte_strings:
-        print("[Error] No input.")
-        exit(1)
-    elif byte_strings[0] == "\ufeff":
-        texts = [line.decode("utf-8-sig").strip() for line in byte_strings]
-    elif type(byte_strings[0]) == str:
-        try:
-            texts = [
-                line.encode("cp932", "surrogateescape").decode("utf-8").strip()
-                for line in byte_strings
-            ]
-        except UnicodeDecodeError:
-            texts = [line.strip() for line in byte_strings]
-        except UnicodeEncodeError:
-            if args.speech_file == sys.stdin:
-                print("[Error] Unreadable string(s) came from stdin.")
-            else:
-                print("[Error] Unreadable string(s) appeared in file.")
-            traceback.print_exc()
+    if hasattr(args, "handler"):
+        args.handler(args)
+
+    elif not hasattr(args, "host"):  # FIXME
+        main_parser.print_help()
+
+    else:
+        service = VveService(VveClient(args.host, args.port), args.dump_dir)
+
+        byte_strings = args.speech_file.readlines()
+        if not byte_strings:
+            print("[Error] No input.")
             exit(1)
-    else:
-        texts = [line.decode("utf-8").strip() for line in byte_strings]
+        elif byte_strings[0] == "\ufeff":
+            texts = [line.decode("utf-8-sig").strip() for line in byte_strings]
+        elif type(byte_strings[0]) == str:
+            try:
+                texts = [
+                    line.encode("cp932", "surrogateescape").decode("utf-8").strip()
+                    for line in byte_strings
+                ]
+            except UnicodeDecodeError:
+                texts = [line.strip() for line in byte_strings]
+            except UnicodeEncodeError:
+                if args.speech_file == sys.stdin:
+                    print("[Error] Unreadable string(s) came from stdin.")
+                else:
+                    print("[Error] Unreadable string(s) appeared in file.")
+                traceback.print_exc()
+                exit(1)
+        else:
+            texts = [line.decode("utf-8").strip() for line in byte_strings]
 
-    if args.line_numbers:
-        try:
-            items = itemgetter(*args.line_numbers)(texts)
-            if type(items) is tuple:
-                texts = []
-                for item in items:
-                    if type(item) is list:
-                        texts.extend(item)
-                    else:
-                        texts.append(item)
-            elif type(items) is list:
-                texts = items
-            else:
-                texts = [items]
+        if args.line_numbers:
+            try:
+                items = itemgetter(*args.line_numbers)(texts)
+                if type(items) is tuple:
+                    texts = []
+                    for item in items:
+                        if type(item) is list:
+                            texts.extend(item)
+                        else:
+                            texts.append(item)
+                elif type(items) is list:
+                    texts = items
+                else:
+                    texts = [items]
 
-        except IndexError:
-            print("[Error] -n/--line_numbers has invalid index.")
-            exit(1)
+            except IndexError:
+                print("[Error] -n/--line_numbers has invalid index.")
+                exit(1)
 
-    if args.speech_file == sys.stdin:
-        text_src_name = "stdin"
-    else:
-        text_src_name = Path(args.speech_file.name).stem
+        if args.speech_file == sys.stdin:
+            text_src_name = "stdin"
+        else:
+            text_src_name = Path(args.speech_file.name).stem
 
-    if args.speaker_id:
-        speaker_id = args.speaker_id
-    else:
-        speaker_id = 0
+        if args.speaker_id:
+            speaker_id = args.speaker_id
+        else:
+            speaker_id = 0
 
-    main(service, texts, text_src_name, speaker_id, args.batch)
+        main(service, texts, text_src_name, speaker_id, args.batch)
