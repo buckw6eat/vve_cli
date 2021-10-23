@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 from requests.models import Response
+
 from vve_cli.dumper import TaggedDumper
 from vve_cli.main import IntervalTimer
 
