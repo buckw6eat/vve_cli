@@ -16,6 +16,7 @@ def set_arguments(parser: ArgumentParser):
     parser.add_argument("--text", type=str)
     parser.add_argument("--kana", action="store_true")
     parser.add_argument("-l", "--line_number", type=int)
+    parser.add_argument("-p", "--preset_id", type=int)
     parser.set_defaults(handler=main)
 
 
@@ -29,6 +30,7 @@ def main(args: Namespace) -> None:
         "text": args.text,
         "is_kana": args.kana or None,
         "line_number": args.line_number,
+        "preset_id": args.preset_id,
     }
     kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
@@ -162,3 +164,24 @@ def call_connect_waves(service: VveService, file_path: Path) -> None:
             raise ValueError("[Error] Wave file not found in specified directory")
     else:
         raise ValueError("[Error] Invalied Path: Directory required")
+
+
+def call_audio_query_from_preset(
+    service: VveService,
+    preset_id: int,
+    text: str = "",
+    file_path: Path = None,
+    line_number: int = 0,
+) -> None:
+    if text:
+        _ = service.audio_query_from_preset(text, preset_id)
+    elif file_path and file_path.exists() and file_path.is_file():
+        texts = file_path.read_text(encoding="utf-8").splitlines()
+        text = texts[line_number if len(texts) > line_number else 0]
+        _ = service.audio_query_from_preset(text, preset_id)
+    else:
+        raise ValueError("[Error] Less or Invalied argument(s)")
+
+
+def call_presets(service: VveService) -> None:
+    _ = service.presets()

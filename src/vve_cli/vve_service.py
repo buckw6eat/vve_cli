@@ -248,6 +248,41 @@ class ConcatWavesAPI(EndPoint):
         return response.content
 
 
+class TextToAudioQueryWithPresetAPI(EndPoint):
+    def _request(self, client, text, preset_id, **kwargs) -> Response:
+        return client.post(
+            f"/{self._api_name}",
+            params={"text": text, "preset_id": preset_id},
+        )
+
+    def _put_log(
+        self, response_time: float, response: Response, text: str, **kwargs
+    ) -> None:
+        print(
+            (
+                f"{self._api_name:>18}: {response_time:7.3f} [sec]"
+                f" : {len(text):3d} : {text}"
+            ),
+            file=sys.stderr,
+        )
+
+    def _set_content(
+        self, response: Response, preset_id: int, tag: str = "dump", **kwargs
+    ) -> Any:
+        if self._dump_dir is not None:
+            if self._dumper is None:
+                self._dumper = TaggedDumper(
+                    self._dump_dir / self._api_name, "json", is_indexed=True
+                )
+            self._dumper.dump(response.text, tag + f"_p{preset_id:02d}")
+
+        try:
+            json_response = response.json()
+        except JSONDecodeError:
+            json_response = {}
+        return json_response
+
+
 class VveService:
     def __init__(self, client: VveClient, dump_root_dir: Optional[Path] = None) -> None:
         self.__client = client
@@ -325,3 +360,13 @@ class VveService:
     def connect_waves(self, base64_waves: List[str], tag: str = "dump") -> bytes:
         api = self._get_api(ConcatWavesAPI, "connect_waves")
         return api.run(self.__client, base64_waves=base64_waves, tag=tag)
+
+    def audio_query_from_preset(
+        self, text: str, preset_id: int, tag: str = "dump"
+    ) -> Dict[str, Any]:
+        api = self._get_api(TextToAudioQueryWithPresetAPI, "audio_query_from_preset")
+        return api.run(self.__client, text=text, preset_id=preset_id, tag=tag)
+
+    def presets(self) -> List[Dict[str, Any]]:
+        api = self._get_api(InformationQueryAPI, "presets")
+        return api.run(self.__client)
